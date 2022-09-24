@@ -264,7 +264,7 @@ long activeDefragZsetEntry(zset *zs, dictEntry *de) {
     long defragged = 0;
     sds sdsele = dictGetKey(de);
     if ((newsds = activeDefragSds(sdsele)))
-        defragged++, de->key = newsds;
+        defragged++, dictSetKey(zs->dict, de, newsds);
     newscore = zslDefrag(zs->zsl, *(double*)dictGetVal(de), sdsele, newsds);
     if (newscore) {
         dictSetVal(zs->dict, de, newscore);
@@ -288,7 +288,7 @@ long activeDefragSdsDict(dict* d, int val_type) {
     while((de = dictNext(di)) != NULL) {
         sds sdsele = dictGetKey(de), newsds;
         if ((newsds = activeDefragSds(sdsele)))
-            de->key = newsds, defragged++;
+            dictSetKey(d, de, newsds), defragged++;
         /* defrag the value */
         if (val_type == DEFRAG_SDS_DICT_VAL_IS_SDS) {
             sdsele = dictGetVal(de);
@@ -374,7 +374,7 @@ long activeDefragSdsListAndDict(list *l, dict *d, int dict_val_type) {
             uint64_t hash = dictGetHash(d, newsds);
             dictEntry **deref = dictFindEntryRefByPtrAndHash(d, sdsele, hash);
             if (deref)
-                (*deref)->key = newsds;
+                dictSetKey(d, *deref, newsds);
             ln->value = newsds;
             defragged++;
         }
@@ -420,7 +420,7 @@ dictEntry* replaceSatelliteDictKeyPtrAndOrDefragDictEntry(dict *d, sds oldkey, s
             (*defragged)++;
         }
         if (newkey)
-            de->key = newkey;
+            dictSetKey(d, de, newkey);
         return de;
     }
     return NULL;
@@ -536,7 +536,7 @@ void scanLaterSetCallback(void *privdata, const dictEntry *_de) {
     long *defragged = privdata;
     sds sdsele = dictGetKey(de), newsds;
     if ((newsds = activeDefragSds(sdsele)))
-        (*defragged)++, de->key = newsds;
+        (*defragged)++, dictSetKey(NULL, de, newsds); // FIXME propagate dict with dictType
     server.stat_active_defrag_scanned++;
 }
 
@@ -554,7 +554,7 @@ void scanLaterHashCallback(void *privdata, const dictEntry *_de) {
     long *defragged = privdata;
     sds sdsele = dictGetKey(de), newsds;
     if ((newsds = activeDefragSds(sdsele)))
-        (*defragged)++, de->key = newsds;
+        (*defragged)++, dictSetKey(NULL, de, newsds); // FIXME propagate dict with dictType
     sdsele = dictGetVal(de);
     if ((newsds = activeDefragSds(sdsele)))
         (*defragged)++, de->v.val = newsds;
@@ -847,12 +847,12 @@ long defragKey(redisDb *db, dictEntry *de) {
     /* Try to defrag the key name. */
     newsds = activeDefragSds(keysds);
     if (newsds)
-        defragged++, de->key = newsds;
+        defragged++, dictSetKey(db->dict, de, newsds);
     if (dictSize(db->expires)) {
          /* Dirty code:
           * I can't search in db->expires for that key after i already released
           * the pointer it holds it won't be able to do the string compare */
-        uint64_t hash = dictGetHash(db->dict, de->key);
+        uint64_t hash = dictGetHash(db->dict, dictGetKey(de));
         replaceSatelliteDictKeyPtrAndOrDefragDictEntry(db->expires, keysds, newsds, hash, &defragged);
     }
 

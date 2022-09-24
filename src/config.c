@@ -983,8 +983,8 @@ void configGetCommand(client *c) {
             /* Note that hidden configs require an exact match (not a pattern) */
             if (config->flags & HIDDEN_CONFIG) continue;
             if (dictFind(matches, config->name)) continue;
-            if (stringmatch(name, de->key, 1)) {
-                dictAdd(matches, de->key, config);
+            if (stringmatch(name, dictGetKey(de), 1)) {
+                dictAdd(matches, dictGetKey(de), config);
             }
         }
         dictReleaseIterator(di);
@@ -994,7 +994,7 @@ void configGetCommand(client *c) {
     addReplyMapLen(c, dictSize(matches));
     while ((de = dictNext(di)) != NULL) {
         standardConfig *config = (standardConfig *) dictGetVal(de);
-        addReplyBulkCString(c, de->key);
+        addReplyBulkCString(c, dictGetKey(de));
         addReplyBulkSds(c, config->interface.get(config));
     }
     dictReleaseIterator(di);
@@ -1023,7 +1023,10 @@ dictType optionToLineDictType = {
     dictSdsKeyCaseCompare,      /* key compare */
     dictSdsDestructor,          /* key destructor */
     dictListDestructor,         /* val destructor */
-    NULL                        /* allow to expand */
+    NULL,                        /* allow to expand */
+    NULL,
+    dictSdsKeyLen,
+    dictSdsKeyToBytes
 };
 
 dictType optionSetDictType = {
@@ -1033,7 +1036,10 @@ dictType optionSetDictType = {
     dictSdsKeyCaseCompare,      /* key compare */
     dictSdsDestructor,          /* key destructor */
     NULL,                       /* val destructor */
-    NULL                        /* allow to expand */
+    NULL,                        /* allow to expand */
+    NULL,
+    dictSdsKeyLen,
+    dictSdsKeyToBytes
 };
 
 /* The config rewrite state. */
@@ -1748,7 +1754,7 @@ int rewriteConfig(char *path, int force_write) {
         standardConfig *config = dictGetVal(de);
         /* Only rewrite the primary names */
         if (config->flags & ALIAS_CONFIG) continue;
-        if (config->interface.rewrite) config->interface.rewrite(config, de->key, state);
+        if (config->interface.rewrite) config->interface.rewrite(config, dictGetKey(de), state);
     }
     dictReleaseIterator(di);
 
@@ -3191,7 +3197,7 @@ int registerConfigValue(const char *name, const standardConfig *config, int alia
         new->alias = config->name;
     }
 
-    return dictAdd(configs, sdsnew(name), new) == DICT_OK;
+    return dictAddAndDestroyKey(configs, sdsnew(name), new) == DICT_OK;
 }
 
 /* Initialize configs to their default values and create and populate the 

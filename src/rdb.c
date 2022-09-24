@@ -1943,12 +1943,10 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key, int dbid, int *error) {
             }
 
             if (dupSearchDict) {
-                sds field_dup = sdsdup(field);
-                if (dictAdd(dupSearchDict, field_dup, NULL) != DICT_OK) {
+                if (dictAdd(dupSearchDict, field, NULL) != DICT_OK) {
                     rdbReportCorruptRDB("Hash with dup elements");
                     dictRelease(dupSearchDict);
                     decrRefCount(o);
-                    sdsfree(field_dup);
                     sdsfree(field);
                     sdsfree(value);
                     return NULL;

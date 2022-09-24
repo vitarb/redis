@@ -10968,7 +10968,10 @@ dictType moduleAPIDictType = {
     dictCStringKeyCompare,     /* key compare */
     NULL,                      /* key destructor */
     NULL,                      /* val destructor */
-    NULL                       /* allow to expand */
+    NULL,                       /* allow to expand */
+    NULL,
+    dictCStrKeyLen,
+    dictCStrKeyToBytes
 };
 
 int moduleRegisterApi(const char *funcname, void *funcptr) {
@@ -10996,7 +10999,10 @@ dictType sdsKeyValueHashDictType = {
     dictSdsKeyCaseCompare,      /* key compare */
     dictSdsDestructor,          /* key destructor */
     dictSdsDestructor,          /* val destructor */
-    NULL                        /* allow to expand */
+    NULL,                       /* allow to expand */
+    NULL,
+    dictSdsKeyLen,
+    dictSdsKeyToBytes
 };
 
 void moduleInitModulesSystem(void) {

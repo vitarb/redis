@@ -45,7 +45,6 @@
 #define DICT_ERR 1
 
 typedef struct dictEntry {
-    void *key;
     union {
         void *val;
         uint64_t u64;
@@ -53,9 +52,7 @@ typedef struct dictEntry {
         double d;
     } v;
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
-    void *metadata[];           /* An arbitrary number of bytes (starting at a
-                                 * pointer-aligned address) of size as returned
-                                 * by dictType's dictEntryMetadataBytes(). */
+    unsigned char data[]; // embedded entry state, including key/value
 } dictEntry;
 
 typedef struct dict dict;
@@ -71,6 +68,11 @@ typedef struct dictType {
     /* Allow a dictEntry to carry extra caller-defined metadata.  The
      * extra memory is initialized to 0 when a dictEntry is allocated. */
     size_t (*dictEntryMetadataBytes)(dict *d);
+    // Returns key length in bytes, that are guaranteed to be available in the buffer passed to keyToBytes.
+    size_t (*keyLen)(const void *key);
+    // Writes key into provided byte array and returns key offset in the buffer.
+    // Offset will be greater than zero for sds strings that have metadata before the main pointer.
+    size_t (*keyToBytes)(unsigned char *buf, const void *key);
 } dictType;
 
 #define DICTHT_SIZE(exp) ((exp) == -1 ? 0 : (unsigned long)1<<(exp))
@@ -106,6 +108,7 @@ typedef void (dictScanFunction)(void *privdata, const dictEntry *de);
 typedef void (dictScanBucketFunction)(dict *d, dictEntry **bucketref);
 
 /* This is the initial size of every hash table */
+static const int ENTRY_METADATA_BYTES = 1;
 #define DICT_HT_INITIAL_EXP      2
 #define DICT_HT_INITIAL_SIZE     (1<<(DICT_HT_INITIAL_EXP))
 
@@ -131,28 +134,13 @@ typedef void (dictScanBucketFunction)(dict *d, dictEntry **bucketref);
 #define dictSetDoubleVal(entry, _val_) \
     do { (entry)->v.d = _val_; } while(0)
 
-#define dictFreeKey(d, entry) \
-    if ((d)->type->keyDestructor) \
-        (d)->type->keyDestructor((d), (entry)->key)
-
-#define dictSetKey(d, entry, _key_) do { \
-    if ((d)->type->keyDup) \
-        (entry)->key = (d)->type->keyDup((d), _key_); \
-    else \
-        (entry)->key = (_key_); \
-} while(0)
-
 #define dictCompareKeys(d, key1, key2) \
     (((d)->type->keyCompare) ? \
         (d)->type->keyCompare((d), key1, key2) : \
         (key1) == (key2))
 
-#define dictMetadata(entry) (&(entry)->metadata)
-#define dictMetadataSize(d) ((d)->type->dictEntryMetadataBytes \
-                             ? (d)->type->dictEntryMetadataBytes(d) : 0)
-
 #define dictHashKey(d, key) ((d)->type->hashFunction(key))
-#define dictGetKey(he) ((he)->key)
+
 #define dictGetVal(he) ((he)->v.val)
 #define dictGetSignedIntegerVal(he) ((he)->v.s64)
 #define dictGetUnsignedIntegerVal(he) ((he)->v.u64)
@@ -174,6 +162,7 @@ typedef void (dictScanBucketFunction)(dict *d, dictEntry **bucketref);
 dict *dictCreate(dictType *type);
 int dictExpand(dict *d, unsigned long size);
 int dictTryExpand(dict *d, unsigned long size);
+int dictAddAndDestroyKey(dict *d, void *key, void *val);
 int dictAdd(dict *d, void *key, void *val);
 dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing);
 dictEntry *dictAddOrFind(dict *d, void *key);
@@ -208,6 +197,25 @@ uint8_t *dictGetHashFunctionSeed(void);
 unsigned long dictScan(dict *d, unsigned long v, dictScanFunction *fn, dictScanBucketFunction *bucketfn, void *privdata);
 uint64_t dictGetHash(dict *d, const void *key);
 dictEntry **dictFindEntryRefByPtrAndHash(dict *d, const void *oldptr, uint64_t hash);
+
+// TODO consider fragmenting dictionary by slot in the cluster mode, this way we can eliminate clusterDictEntryMetadata.
+#define dictMetadataSize(d) ((d)->type->dictEntryMetadataBytes \
+                             ? (d)->type->dictEntryMetadataBytes(d) : 0)
+// #define dictMetadata(entry) (&(entry)->metadata)
+// FIXME this will break CME, but fine for prototyping.
+void *dictMetadata(dictEntry *entry);
+
+// Key management functions
+/* #define dictSetKey(d, entry, _key_) do { \
+    if ((d)->type->keyDup) \
+        (entry)->key = (d)->type->keyDup((d), _key_); \
+    else \
+        (entry)->key = (_key_); \
+} while(0) */
+void dictSetKey(dict *d, dictEntry *entry, void *key);
+
+/* #define dictGetKey(he) ((he)->key) */
+void *dictGetKey(dictEntry *entry);
 
 #ifdef REDIS_TEST
 int dictTest(int argc, char *argv[], int flags);

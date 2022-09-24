@@ -186,8 +186,7 @@ robj *lookupKeyWriteOrReply(client *c, robj *key, robj *reply) {
  *
  * The program is aborted if the key already exists. */
 void dbAdd(redisDb *db, robj *key, robj *val) {
-    sds copy = sdsdup(key->ptr);
-    dictEntry *de = dictAddRaw(db->dict, copy, NULL);
+    dictEntry *de = dictAddRaw(db->dict, key->ptr, NULL);
     serverAssertWithInfo(NULL, key, de != NULL);
     dictSetVal(db->dict, de, val);
     signalKeyAsReady(db, key, val->type);

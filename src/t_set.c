@@ -55,7 +55,6 @@ int setTypeAdd(robj *subject, sds value) {
         dict *ht = subject->ptr;
         dictEntry *de = dictAddRaw(ht,value,NULL);
         if (de) {
-            dictSetKey(ht,de,sdsdup(value));
             dictSetVal(ht,de,NULL);
             return 1;
         }
@@ -79,7 +78,7 @@ int setTypeAdd(robj *subject, sds value) {
 
             /* The set *was* an intset and this value is not integer
              * encodable, so dictAdd should always work. */
-            serverAssert(dictAdd(subject->ptr,sdsdup(value),NULL) == DICT_OK);
+            serverAssert(dictAdd(subject->ptr,value,NULL) == DICT_OK);
             return 1;
         }
     } else {
@@ -253,6 +252,7 @@ void setTypeConvert(robj *setobj, int enc) {
         while (setTypeNext(si,&element,&intele) != -1) {
             element = sdsfromlonglong(intele);
             serverAssert(dictAdd(d,element,NULL) == DICT_OK);
+            sdsfree(element);
         }
         setTypeReleaseIterator(si);
 
@@ -747,9 +747,13 @@ void srandmemberWithCountCommand(client *c) {
             int retval = DICT_ERR;
 
             if (encoding == OBJ_ENCODING_INTSET) {
-                retval = dictAdd(d,sdsfromlonglong(llele),NULL);
+                sds key = sdsfromlonglong(llele);
+                retval = dictAdd(d, key, NULL);
+                sdsfree(key);
             } else {
-                retval = dictAdd(d,sdsdup(ele),NULL);
+                sds key = sdsdup(ele);
+                retval = dictAdd(d, key, NULL);
+                sdsfree(key);
             }
             serverAssert(retval == DICT_OK);
         }
@@ -760,9 +764,7 @@ void srandmemberWithCountCommand(client *c) {
         while (size > count) {
             dictEntry *de;
             de = dictGetFairRandomKey(d);
-            dictUnlink(d,dictGetKey(de));
-            sdsfree(dictGetKey(de));
-            dictFreeUnlinkedEntry(d,de);
+            dictDelete(d,dictGetKey(de));
             size--;
         }
     }
@@ -783,13 +785,10 @@ void srandmemberWithCountCommand(client *c) {
             } else {
                 sdsele = sdsdup(ele);
             }
-            /* Try to add the object to the dictionary. If it already exists
-             * free it, otherwise increment the number of objects we have
+            /* Try to add the object to the dictionary and increment the number of objects we have
              * in the result dictionary. */
-            if (dictAdd(d,sdsele,NULL) == DICT_OK)
-                added++;
-            else
-                sdsfree(sdsele);
+            if (dictAdd(d,sdsele,NULL) == DICT_OK) added++;
+            sdsfree(sdsele);
         }
     }
 
@@ -800,8 +799,10 @@ void srandmemberWithCountCommand(client *c) {
 
         addReplyArrayLen(c,count);
         di = dictGetIterator(d);
-        while((de = dictNext(di)) != NULL)
-            addReplyBulkSds(c,dictGetKey(de));
+        while((de = dictNext(di)) != NULL) {
+            sds key = dictGetKey(de);
+            addReplyBulkCBuffer(c, key, sdslen(key));
+        }
         dictReleaseIterator(di);
         dictRelease(d);
     }

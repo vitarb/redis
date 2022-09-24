@@ -439,7 +439,10 @@ void rememberSlaveKeyWithExpire(redisDb *db, robj *key) {
             dictSdsKeyCompare,          /* key compare */
             dictSdsDestructor,          /* key destructor */
             NULL,                       /* val destructor */
-            NULL                        /* allow to expand */
+            NULL,                        /* allow to expand */
+            NULL,
+            dictSdsKeyLen,
+            dictSdsKeyToBytes
         };
         slaveKeysWithExpire = dictCreate(&dt);
     }
@@ -450,8 +453,9 @@ void rememberSlaveKeyWithExpire(redisDb *db, robj *key) {
      * representing the key: we don't want to need to take those keys
      * in sync with the main DB. The keys will be removed by expireSlaveKeys()
      * as it scans to find keys to remove. */
-    if (de->key == key->ptr) {
-        de->key = sdsdup(key->ptr);
+    if (dictGetKey(de) == key->ptr) {
+        // TODO add support for referencing keys
+//        dictSetKey(slaveKeysWithExpire, de, sdsdup(key->ptr));
         dictSetUnsignedIntegerVal(de,0);
     }
 

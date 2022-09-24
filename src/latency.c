@@ -54,7 +54,10 @@ dictType latencyTimeSeriesDictType = {
     dictStringKeyCompare,       /* key compare */
     dictVanillaFree,            /* key destructor */
     dictVanillaFree,            /* val destructor */
-    NULL                        /* allow to expand */
+    NULL,                       /* allow to expand */
+    NULL,
+    dictCStrKeyLen,
+    dictCStrKeyToBytes
 };
 
 /* ------------------------- Utility functions ------------------------------ */
@@ -90,7 +93,7 @@ void latencyAddSample(const char *event, mstime_t latency) {
         ts->idx = 0;
         ts->max = 0;
         memset(ts->samples,0,sizeof(ts->samples));
-        dictAdd(server.latency_events,zstrdup(event),ts);
+        dictAdd(server.latency_events, (char *) event, ts);
     }
 
     if (latency > ts->max) ts->max = latency;

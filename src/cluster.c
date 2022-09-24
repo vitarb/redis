@@ -103,7 +103,10 @@ dictType clusterNodesDictType = {
         dictSdsKeyCompare,          /* key compare */
         dictSdsDestructor,          /* key destructor */
         NULL,                       /* val destructor */
-        NULL                        /* allow to expand */
+        NULL,                        /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Cluster re-addition blacklist. This maps node IDs to the time
@@ -116,7 +119,10 @@ dictType clusterNodesBlackListDictType = {
         dictSdsKeyCaseCompare,      /* key compare */
         dictSdsDestructor,          /* key destructor */
         NULL,                       /* val destructor */
-        NULL                        /* allow to expand */
+        NULL,                        /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 static ConnectionType *connTypeOfCluster() {
@@ -1193,8 +1199,9 @@ void freeClusterNode(clusterNode *n) {
 void clusterAddNode(clusterNode *node) {
     int retval;
 
-    retval = dictAdd(server.cluster->nodes,
-            sdsnewlen(node->name,CLUSTER_NAMELEN), node);
+    sds nodeName = sdsnewlen(node->name, CLUSTER_NAMELEN);
+    retval = dictAdd(server.cluster->nodes, nodeName, node);
+    sdsfree(nodeName);
     serverAssert(retval == DICT_OK);
 }
 
@@ -1475,11 +1482,7 @@ void clusterBlacklistAddNode(clusterNode *node) {
     sds id = sdsnewlen(node->name,CLUSTER_NAMELEN);
 
     clusterBlacklistCleanup();
-    if (dictAdd(server.cluster->nodes_black_list,id,NULL) == DICT_OK) {
-        /* If the key was added, duplicate the sds string representation of
-         * the key for the next lookup. We'll free it at the end. */
-        id = sdsdup(id);
-    }
+    dictAdd(server.cluster->nodes_black_list,id,NULL);
     de = dictFind(server.cluster->nodes_black_list,id);
     dictSetUnsignedIntegerVal(de,time(NULL)+CLUSTER_BLACKLIST_TTL);
     sdsfree(id);
@@ -7015,7 +7018,7 @@ int clusterRedirectBlockedClientIfNeeded(client *c) {
  * understand if we have keys for a given hash slot. */
 
 void slotToKeyAddEntry(dictEntry *entry, redisDb *db) {
-    sds key = entry->key;
+    sds key = dictGetKey(entry);
     unsigned int hashslot = keyHashSlot(key, sdslen(key));
     slotToKeys *slot_to_keys = &(*db->slots_to_keys).by_slot[hashslot];
     slot_to_keys->count++;
@@ -7032,7 +7035,7 @@ void slotToKeyAddEntry(dictEntry *entry, redisDb *db) {
 }
 
 void slotToKeyDelEntry(dictEntry *entry, redisDb *db) {
-    sds key = entry->key;
+    sds key = dictGetKey(entry);
     unsigned int hashslot = keyHashSlot(key, sdslen(key));
     slotToKeys *slot_to_keys = &(*db->slots_to_keys).by_slot[hashslot];
     slot_to_keys->count--;
@@ -7064,7 +7067,7 @@ void slotToKeyReplaceEntry(dictEntry *entry, redisDb *db) {
         dictEntryNextInSlot(prev) = entry;
     } else {
         /* The replaced entry was the first in the list. */
-        sds key = entry->key;
+        sds key = dictGetKey(entry);
         unsigned int hashslot = keyHashSlot(key, sdslen(key));
         slotToKeys *slot_to_keys = &(*db->slots_to_keys).by_slot[hashslot];
         slot_to_keys->head = entry;

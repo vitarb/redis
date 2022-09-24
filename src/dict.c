@@ -92,6 +92,21 @@ uint64_t dictGenCaseHashFunction(const unsigned char *buf, size_t len) {
 }
 
 /* ----------------------------- API implementation ------------------------- */
+void dictSetKey(dict *d, dictEntry *entry, void *key) {
+    dictType *dt = d->type;
+    entry->data[0] = dt->keyToBytes(&entry->data[ENTRY_METADATA_BYTES], key);
+}
+
+void *dictGetKey(dictEntry *entry) {
+    return &entry->data[ENTRY_METADATA_BYTES + entry->data[0]]; // return with offset for SDS
+}
+
+void *dictMetadata(dictEntry *entry) {
+    // TODO dict metadata is currently used only with sds, take advantage of sds len instead of scanning all bytes for \0.
+    // TODO this approach will not work for robj keys unless we add explicit \0 at the end.
+    size_t keyBytes = strlen((char *) entry->data);
+    return &entry->data[keyBytes + 1];
+}
 
 /* Reset hash table parameters already initialized with _dictInit()*/
 static void _dictReset(dict *d, int htidx)
@@ -229,7 +244,7 @@ int dictRehash(dict *d, int n) {
 
             nextde = de->next;
             /* Get the index in the new hash table */
-            h = dictHashKey(d, de->key) & DICTHT_SIZE_MASK(d->ht_size_exp[1]);
+            h = dictHashKey(d, dictGetKey(de)) & DICTHT_SIZE_MASK(d->ht_size_exp[1]);
             de->next = d->ht_table[1][h];
             d->ht_table[1][h] = de;
             d->ht_used[0]--;
@@ -291,6 +306,13 @@ static void _dictRehashStep(dict *d) {
     if (d->pauserehash == 0) dictRehash(d,1);
 }
 
+/* Add an element to the target hash table and destroy original key */
+int dictAddAndDestroyKey(dict *d, void *key, void *val) {
+    int res = dictAdd(d, key, val);
+    d->type->keyDestructor(d, key);
+    return res;
+}
+
 /* Add an element to the target hash table */
 int dictAdd(dict *d, void *key, void *val)
 {
@@ -337,10 +359,11 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
      * system it is more likely that recently added entries are accessed
      * more frequently. */
     htidx = dictIsRehashing(d) ? 1 : 0;
+    size_t keyLen = d->type->keyLen(key);
     size_t metasize = dictMetadataSize(d);
-    entry = zmalloc(sizeof(*entry) + metasize);
+    entry = zmalloc(sizeof(dictEntry) + (keyLen + ENTRY_METADATA_BYTES) * sizeof(char) + metasize);
     if (metasize > 0) {
-        memset(dictMetadata(entry), 0, metasize);
+        memset(&entry->data[ENTRY_METADATA_BYTES + keyLen], 0, metasize);
     }
     entry->next = d->ht_table[htidx][index];
     d->ht_table[htidx][index] = entry;
@@ -411,7 +434,7 @@ static dictEntry *dictGenericDelete(dict *d, const void *key, int nofree) {
         he = d->ht_table[table][idx];
         prevHe = NULL;
         while(he) {
-            if (key==he->key || dictCompareKeys(d, key, he->key)) {
+            if (dictCompareKeys(d, key, dictGetKey(he))) {
                 /* Unlink the element from the list */
                 if (prevHe)
                     prevHe->next = he->next;
@@ -466,7 +489,6 @@ dictEntry *dictUnlink(dict *d, const void *key) {
  * to dictUnlink(). It's safe to call this function with 'he' = NULL. */
 void dictFreeUnlinkedEntry(dict *d, dictEntry *he) {
     if (he == NULL) return;
-    dictFreeKey(d, he);
     dictFreeVal(d, he);
     zfree(he);
 }
@@ -484,7 +506,6 @@ int _dictClear(dict *d, int htidx, void(callback)(dict*)) {
         if ((he = d->ht_table[htidx][i]) == NULL) continue;
         while(he) {
             nextHe = he->next;
-            dictFreeKey(d, he);
             dictFreeVal(d, he);
             zfree(he);
             d->ht_used[htidx]--;
@@ -518,7 +539,7 @@ dictEntry *dictFind(dict *d, const void *key)
         idx = h & DICTHT_SIZE_MASK(d->ht_size_exp[table]);
         he = d->ht_table[table][idx];
         while(he) {
-            if (key==he->key || dictCompareKeys(d, key, he->key))
+            if (key==dictGetKey(he) || dictCompareKeys(d, key, dictGetKey(he)))
                 return he;
             he = he->next;
         }
@@ -1060,7 +1081,7 @@ static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **e
         /* Search if this slot does not already contain the given key */
         he = d->ht_table[table][idx];
         while(he) {
-            if (key==he->key || dictCompareKeys(d, key, he->key)) {
+            if (key==dictGetKey(he) || dictCompareKeys(d, key, dictGetKey(he))) {
                 if (existing) *existing = he;
                 return -1;
             }
@@ -1095,6 +1116,7 @@ uint64_t dictGetHash(dict *d, const void *key) {
  * the hash value should be provided using dictGetHash.
  * no string / key comparison is performed.
  * return value is the reference to the dictEntry if found, or NULL if not found. */
+// TODO investigate if this function that is relying on old pointers will work, as we do copy on write now.
 dictEntry **dictFindEntryRefByPtrAndHash(dict *d, const void *oldptr, uint64_t hash) {
     dictEntry *he, **heref;
     unsigned long idx, table;
@@ -1105,7 +1127,7 @@ dictEntry **dictFindEntryRefByPtrAndHash(dict *d, const void *oldptr, uint64_t h
         heref = &d->ht_table[table][idx];
         he = *heref;
         while(he) {
-            if (oldptr==he->key)
+            if (oldptr==dictGetKey(he))
                 return heref;
             heref = &he->next;
             he = *heref;
@@ -1232,6 +1254,15 @@ char *stringFromLongLong(long long value) {
     return s;
 }
 
+size_t tstCStrKeyLen(const void *key) {
+    return strlen((const char *) key);
+}
+
+size_t tstCStrKeyToBytes(unsigned char *buf, const void *key) {
+    memcpy(buf, key, strlen((const char *) key));
+    return 0;
+}
+
 dictType BenchmarkDictType = {
     hashCallback,
     NULL,
@@ -1239,7 +1270,10 @@ dictType BenchmarkDictType = {
     compareCallback,
     freeCallback,
     NULL,
-    NULL
+    NULL,
+    NULL,
+    tstCStrKeyLen,
+    tstCStrKeyToBytes
 };
 
 #define start_benchmark() start = timeInMilliseconds()

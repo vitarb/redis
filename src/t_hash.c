@@ -239,11 +239,6 @@ int hashTypeSet(robj *o, sds field, sds value, int flags) {
         de = dictAddRaw(ht, field, &existing);
         if (de) {
             dictSetVal(ht, de, v);
-            if (flags & HASH_SET_TAKE_FIELD) {
-                field = NULL;
-            } else {
-                dictSetKey(ht, de, sdsdup(field));
-            }
         } else {
             sdsfree(dictGetVal(existing));
             dictSetVal(ht, existing, v);
@@ -465,8 +460,9 @@ void hashTypeConvertListpack(robj *o, int enc) {
             key = hashTypeCurrentObjectNewSds(hi,OBJ_HASH_KEY);
             value = hashTypeCurrentObjectNewSds(hi,OBJ_HASH_VALUE);
             ret = dictAdd(dict, key, value);
+            sdsfree(key); // Dict makes a copy of key, so we should free it right away.
             if (ret != DICT_OK) {
-                sdsfree(key); sdsfree(value); /* Needed for gcc ASAN */
+                sdsfree(value); /* Needed for gcc ASAN */
                 hashTypeReleaseIterator(hi);  /* Needed for gcc ASAN */
                 serverLogHexDump(LL_WARNING,"listpack with dup elements dump",
                     o->ptr,lpBytes(o->ptr));
@@ -517,15 +513,14 @@ robj *hashTypeDup(robj *o) {
         hi = hashTypeInitIterator(o);
         while (hashTypeNext(hi) != C_ERR) {
             sds field, value;
-            sds newfield, newvalue;
+            sds newvalue;
             /* Extract a field-value pair from an original hash object.*/
             field = hashTypeCurrentFromHashTable(hi, OBJ_HASH_KEY);
             value = hashTypeCurrentFromHashTable(hi, OBJ_HASH_VALUE);
-            newfield = sdsdup(field);
             newvalue = sdsdup(value);
 
             /* Add a field-value pair to a new hash object. */
-            dictAdd(d,newfield,newvalue);
+            dictAdd(d,field,newvalue);
         }
         hashTypeReleaseIterator(hi);
 
@@ -1025,6 +1020,7 @@ void hrandfieldWithCountCommand(client *c, long l, int withvalues) {
             ret = dictAdd(d, key, value);
 
             serverAssert(ret == DICT_OK);
+            sdsfree(key);
         }
         serverAssert(dictSize(d) == size);
         hashTypeReleaseIterator(hi);
@@ -1034,7 +1030,6 @@ void hrandfieldWithCountCommand(client *c, long l, int withvalues) {
             dictEntry *de;
             de = dictGetFairRandomKey(d);
             dictUnlink(d,dictGetKey(de));
-            sdsfree(dictGetKey(de));
             sdsfree(dictGetVal(de));
             dictFreeUnlinkedEntry(d,de);
             size--;
@@ -1049,7 +1044,7 @@ void hrandfieldWithCountCommand(client *c, long l, int withvalues) {
             sds value = dictGetVal(de);
             if (withvalues && c->resp > 2)
                 addReplyArrayLen(c,2);
-            addReplyBulkSds(c, key);
+            addReplyBulkCBuffer(c, key, sdslen(key));
             if (withvalues)
                 addReplyBulkSds(c, value);
         }

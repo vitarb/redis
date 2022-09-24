@@ -66,7 +66,10 @@ dictType shaScriptObjectDictType = {
         dictSdsKeyCaseCompare,      /* key compare */
         dictSdsDestructor,          /* key destructor */
         dictLuaScriptDestructor,    /* val destructor */
-        NULL                        /* allow to expand */
+        NULL,                       /* allow to expand */
+        NULL,
+        dictCStrKeyLen,
+        dictCStrKeyToBytes
 };
 
 /* Lua context */

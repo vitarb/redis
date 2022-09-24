@@ -428,7 +428,10 @@ dictType instancesDictType = {
     dictSdsKeyCompare,         /* key compare */
     NULL,                      /* key destructor */
     dictInstancesValDestructor,/* val destructor */
-    NULL                       /* allow to expand */
+    NULL,                      /* allow to expand */
+    NULL,
+    dictSdsKeyLen,
+    dictSdsKeyToBytes
 };
 
 /* Instance runid (sds) -> votes (long casted to void*)
@@ -442,7 +445,10 @@ dictType leaderVotesDictType = {
     dictSdsKeyCompare,         /* key compare */
     NULL,                      /* key destructor */
     NULL,                      /* val destructor */
-    NULL                       /* allow to expand */
+    NULL,                      /* allow to expand */
+    NULL,
+    dictSdsKeyLen,
+    dictSdsKeyToBytes
 };
 
 /* Instance renamed commands table. */
@@ -453,7 +459,10 @@ dictType renamedCommandsDictType = {
     dictSdsKeyCaseCompare,     /* key compare */
     dictSdsDestructor,         /* key destructor */
     dictSdsDestructor,         /* val destructor */
-    NULL                       /* allow to expand */
+    NULL,                      /* allow to expand */
+    NULL,
+    dictSdsKeyLen,
+    dictSdsKeyToBytes
 };
 
 /* =========================== Initialization =============================== */

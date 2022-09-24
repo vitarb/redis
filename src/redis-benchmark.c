@@ -1311,6 +1311,7 @@ static int fetchClusterSlotsConfiguration(client c) {
         NULL,                      /* key destructor */
         NULL,                      /* val destructor */
         NULL                       /* allow to expand */
+        // FIXME add key len and serializer, requires extracting them in to a separate file.
     };
     /* printf("[%d] fetchClusterSlotsConfiguration\n", c->thread_id); */
     dict *masters = dictCreate(&dtype);

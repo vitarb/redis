@@ -404,177 +404,250 @@ size_t dictEntryMetadataSize(dict *d) {
     return server.cluster_enabled ? sizeof(clusterDictEntryMetadata) : 0;
 }
 
+size_t dictSdsKeyLen(const void *key) {
+    return sdsAllocSize((sds)key);
+}
+
+size_t dictSdsKeyToBytes(unsigned char *buf, const void *key) {
+    sds keySds = (sds) key;
+    memcpy(buf, sdsAllocPtr(keySds), sdsAllocSize(keySds));
+    return sdsHdrSize(keySds[-1]);
+}
+
+size_t dictCStrKeyLen(const void *key) {
+    return strlen((const char *) key) + 1;
+}
+
+size_t dictCStrKeyToBytes(unsigned char *buf, const void *key) {
+    redis_strlcpy((char*)buf, key, dictCStrKeyLen(key));
+    return 0;
+}
+
+size_t dictObjKeyLen(const void *key) {
+    return sizeof(robj);
+}
+
+size_t dictObjKeyToBytes(unsigned char *buf, const void *key) {
+    memcpy(buf, key, sizeof(robj));
+    return 0;
+}
+
 /* Generic hash table type where keys are Redis Objects, Values
  * dummy pointers. */
 dictType objectKeyPointerValueDictType = {
-    dictEncObjHash,            /* hash function */
-    NULL,                      /* key dup */
-    NULL,                      /* val dup */
-    dictEncObjKeyCompare,      /* key compare */
-    dictObjectDestructor,      /* key destructor */
-    NULL,                      /* val destructor */
-    NULL                       /* allow to expand */
+        dictEncObjHash,            /* hash function */
+        NULL,                      /* key dup */
+        NULL,                      /* val dup */
+        dictEncObjKeyCompare,      /* key compare */
+        dictObjectDestructor,      /* key destructor */
+        NULL,                      /* val destructor */
+        NULL,                      /* allow to expand */
+        NULL,
+        dictObjKeyLen,
+        dictObjKeyToBytes
 };
 
 /* Like objectKeyPointerValueDictType(), but values can be destroyed, if
  * not NULL, calling zfree(). */
 dictType objectKeyHeapPointerValueDictType = {
-    dictEncObjHash,            /* hash function */
-    NULL,                      /* key dup */
-    NULL,                      /* val dup */
-    dictEncObjKeyCompare,      /* key compare */
-    dictObjectDestructor,      /* key destructor */
-    dictVanillaFree,           /* val destructor */
-    NULL                       /* allow to expand */
+        dictEncObjHash,            /* hash function */
+        NULL,                      /* key dup */
+        NULL,                      /* val dup */
+        dictEncObjKeyCompare,      /* key compare */
+        dictObjectDestructor,      /* key destructor */
+        dictVanillaFree,           /* val destructor */
+        NULL,                      /* allow to expand */
+        NULL,
+        dictObjKeyLen,
+        dictObjKeyToBytes
 };
 
 /* Set dictionary type. Keys are SDS strings, values are not used. */
 dictType setDictType = {
-    dictSdsHash,               /* hash function */
-    NULL,                      /* key dup */
-    NULL,                      /* val dup */
-    dictSdsKeyCompare,         /* key compare */
-    dictSdsDestructor,         /* key destructor */
-    NULL                       /* val destructor */
+        dictSdsHash,               /* hash function */
+        NULL,                      /* key dup */
+        NULL,                      /* val dup */
+        dictSdsKeyCompare,         /* key compare */
+        dictSdsDestructor,         /* key destructor */
+        NULL,                      /* val destructor */
+        NULL,
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Sorted sets hash (note: a skiplist is used in addition to the hash table) */
 dictType zsetDictType = {
-    dictSdsHash,               /* hash function */
-    NULL,                      /* key dup */
-    NULL,                      /* val dup */
-    dictSdsKeyCompare,         /* key compare */
-    NULL,                      /* Note: SDS string shared & freed by skiplist */
-    NULL,                      /* val destructor */
-    NULL                       /* allow to expand */
+        dictSdsHash,               /* hash function */
+        NULL,                      /* key dup */
+        NULL,                      /* val dup */
+        dictSdsKeyCompare,         /* key compare */
+        NULL,                      /* Note: SDS string shared & freed by skiplist */
+        NULL,                      /* val destructor */
+        NULL,                      /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Db->dict, keys are sds strings, vals are Redis objects. */
 dictType dbDictType = {
-    dictSdsHash,                /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictSdsKeyCompare,          /* key compare */
-    dictSdsDestructor,          /* key destructor */
-    dictObjectDestructor,       /* val destructor */
-    dictExpandAllowed,          /* allow to expand */
-    dictEntryMetadataSize       /* size of entry metadata in bytes */
+        dictSdsHash,                /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictSdsKeyCompare,          /* key compare */
+        dictSdsDestructor,          /* key destructor */
+        dictObjectDestructor,       /* val destructor */
+        dictExpandAllowed,          /* allow to expand */
+        dictEntryMetadataSize,      /* size of entry metadata in bytes */
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Db->expires */
 dictType dbExpiresDictType = {
-    dictSdsHash,                /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictSdsKeyCompare,          /* key compare */
-    NULL,                       /* key destructor */
-    NULL,                       /* val destructor */
-    dictExpandAllowed           /* allow to expand */
+        dictSdsHash,                /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictSdsKeyCompare,          /* key compare */
+        NULL,                       /* key destructor */
+        NULL,                       /* val destructor */
+        dictExpandAllowed,          /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Command table. sds string -> command struct pointer. */
 dictType commandTableDictType = {
-    dictSdsCaseHash,            /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictSdsKeyCaseCompare,      /* key compare */
-    dictSdsDestructor,          /* key destructor */
-    NULL,                       /* val destructor */
-    NULL                        /* allow to expand */
+        dictSdsCaseHash,            /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictSdsKeyCaseCompare,      /* key compare */
+        dictSdsDestructor,          /* key destructor */
+        NULL,                       /* val destructor */
+        NULL,                       /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Hash type hash table (note that small hashes are represented with listpacks) */
 dictType hashDictType = {
-    dictSdsHash,                /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictSdsKeyCompare,          /* key compare */
-    dictSdsDestructor,          /* key destructor */
-    dictSdsDestructor,          /* val destructor */
-    NULL                        /* allow to expand */
+        dictSdsHash,                /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictSdsKeyCompare,          /* key compare */
+        dictSdsDestructor,          /* key destructor */
+        dictSdsDestructor,          /* val destructor */
+        NULL,                       /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Dict type without destructor */
 dictType sdsReplyDictType = {
-    dictSdsHash,                /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictSdsKeyCompare,          /* key compare */
-    NULL,                       /* key destructor */
-    NULL,                       /* val destructor */
-    NULL                        /* allow to expand */
+        dictSdsHash,                /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictSdsKeyCompare,          /* key compare */
+        NULL,                       /* key destructor */
+        NULL,                       /* val destructor */
+        NULL,                       /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Keylist hash table type has unencoded redis objects as keys and
  * lists as values. It's used for blocking operations (BLPOP) and to
  * map swapped keys to a list of clients waiting for this keys to be loaded. */
 dictType keylistDictType = {
-    dictObjHash,                /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictObjKeyCompare,          /* key compare */
-    dictObjectDestructor,       /* key destructor */
-    dictListDestructor,         /* val destructor */
-    NULL                        /* allow to expand */
+        dictObjHash,                /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictObjKeyCompare,          /* key compare */
+        dictObjectDestructor,       /* key destructor */
+        dictListDestructor,         /* val destructor */
+        NULL,                       /* allow to expand */
+        NULL,
+        dictObjKeyLen,
+        dictObjKeyToBytes
 };
 
 /* Modules system dictionary type. Keys are module name,
  * values are pointer to RedisModule struct. */
 dictType modulesDictType = {
-    dictSdsCaseHash,            /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictSdsKeyCaseCompare,      /* key compare */
-    dictSdsDestructor,          /* key destructor */
-    NULL,                       /* val destructor */
-    NULL                        /* allow to expand */
+        dictSdsCaseHash,            /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictSdsKeyCaseCompare,      /* key compare */
+        dictSdsDestructor,          /* key destructor */
+        NULL,                       /* val destructor */
+        NULL,                       /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Migrate cache dict type. */
 dictType migrateCacheDictType = {
-    dictSdsHash,                /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictSdsKeyCompare,          /* key compare */
-    dictSdsDestructor,          /* key destructor */
-    NULL,                       /* val destructor */
-    NULL                        /* allow to expand */
+        dictSdsHash,                /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictSdsKeyCompare,          /* key compare */
+        dictSdsDestructor,          /* key destructor */
+        NULL,                       /* val destructor */
+        NULL,                       /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Dict for for case-insensitive search using null terminated C strings.
  * The keys stored in dict are sds though. */
 dictType stringSetDictType = {
-    dictCStrCaseHash,           /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictCStrKeyCaseCompare,     /* key compare */
-    dictSdsDestructor,          /* key destructor */
-    NULL,                       /* val destructor */
-    NULL                        /* allow to expand */
+        dictCStrCaseHash,           /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictCStrKeyCaseCompare,     /* key compare */
+        dictSdsDestructor,          /* key destructor */
+        NULL,                       /* val destructor */
+        NULL,                        /* allow to expand */
+        NULL,
+        dictCStrKeyLen,
+        dictCStrKeyToBytes
 };
 
 /* Dict for for case-insensitive search using null terminated C strings.
  * The key and value do not have a destructor. */
 dictType externalStringType = {
-    dictCStrCaseHash,           /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictCStrKeyCaseCompare,     /* key compare */
-    NULL,                       /* key destructor */
-    NULL,                       /* val destructor */
-    NULL                        /* allow to expand */
+        dictCStrCaseHash,           /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictCStrKeyCaseCompare,     /* key compare */
+        NULL,                       /* key destructor */
+        NULL,                       /* val destructor */
+        NULL,                        /* allow to expand */
+        NULL,
+        dictCStrKeyLen,
+        dictCStrKeyToBytes
 };
 
 /* Dict for case-insensitive search using sds objects with a zmalloc
  * allocated object as the value. */
 dictType sdsHashDictType = {
-    dictSdsCaseHash,            /* hash function */
-    NULL,                       /* key dup */
-    NULL,                       /* val dup */
-    dictSdsKeyCaseCompare,      /* key compare */
-    dictSdsDestructor,          /* key destructor */
-    dictVanillaFree,            /* val destructor */
-    NULL                        /* allow to expand */
+        dictSdsCaseHash,            /* hash function */
+        NULL,                       /* key dup */
+        NULL,                       /* val dup */
+        dictSdsKeyCaseCompare,      /* key compare */
+        dictSdsDestructor,          /* key destructor */
+        dictVanillaFree,            /* val destructor */
+        NULL,                       /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 int htNeedsResize(dict *dict) {
@@ -1007,7 +1080,7 @@ void databasesCron(void) {
     }
 
     /* Defrag keys gradually. */
-    activeDefragCycle();
+//    activeDefragCycle(); // FIXME
 
     /* Perform hash tables rehashing if needed, but only if there are no
      * other processes saving the DB on disk. Otherwise rehashing is bad
@@ -1492,7 +1565,7 @@ void whileBlockedCron() {
     while (server.blocked_last_cron < server.mstime) {
 
         /* Defrag keys gradually. */
-        activeDefragCycle();
+//        activeDefragCycle(); //FIXME
 
         server.blocked_last_cron += hz_ms;
 
@@ -2809,7 +2882,9 @@ void commandAddSubcommand(struct redisCommand *parent, struct redisCommand *subc
     subcommand->parent = parent; /* Assign the parent command */
     subcommand->id = ACLGetCommandID(subcommand->fullname); /* Assign the ID used for ACL. */
 
-    serverAssert(dictAdd(parent->subcommands_dict, sdsnew(declared_name), subcommand) == DICT_OK);
+    sds declaredNameSds = sdsnew(declared_name);
+    serverAssert(dictAdd(parent->subcommands_dict, declaredNameSds, subcommand) == DICT_OK);
+    sdsfree(declaredNameSds);
 }
 
 /* Set implicit ACl categories (see comment above the definition of
@@ -2929,10 +3004,10 @@ void populateCommandTable(void) {
         if (populateCommandStructure(c) == C_ERR)
             continue;
 
-        retval1 = dictAdd(server.commands, sdsdup(c->fullname), c);
+        retval1 = dictAdd(server.commands, c->fullname, c);
         /* Populate an additional dictionary that will be unaffected
          * by rename-command statements in redis.conf. */
-        retval2 = dictAdd(server.orig_commands, sdsdup(c->fullname), c);
+        retval2 = dictAdd(server.orig_commands, c->fullname, c);
         serverAssert(retval1 == DICT_OK && retval2 == DICT_OK);
     }
 }
@@ -5281,8 +5356,7 @@ dict *genInfoSectionDict(robj **argv, int argc, char **defaults, int *out_all, i
             if (out_all) *out_all = 1;
         } else {
             sds section = sdsnew(argv[i]->ptr);
-            if (dictAdd(section_dict, section, NULL) != DICT_OK)
-                sdsfree(section);
+            dictAddAndDestroyKey(section_dict, section, NULL);
         }
     }
     return section_dict;

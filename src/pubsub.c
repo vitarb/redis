@@ -261,7 +261,8 @@ int pubsubUnsubscribeChannel(client *c, robj *channel, int notify, pubsubtype ty
     /* Remove the channel from the client -> channels hash table */
     incrRefCount(channel); /* channel may be just a pointer to the same object
                             we have in the hash tables. Protect it... */
-    if (dictDelete(type.clientPubSubChannels(c),channel) == DICT_OK) {
+    dictEntry *unlinked = dictUnlink(type.clientPubSubChannels(c), channel);
+    if (unlinked) {
         retval = 1;
         /* Remove the client from the channel -> clients list hash table */
         de = dictFind(*type.serverPubSubChannels, channel);
@@ -287,6 +288,7 @@ int pubsubUnsubscribeChannel(client *c, robj *channel, int notify, pubsubtype ty
         addReplyPubsubUnsubscribed(c,channel,type);
     }
     decrRefCount(channel); /* it is finally safe to release it */
+    if (unlinked) dictFreeUnlinkedEntry(type.clientPubSubChannels(c), unlinked);
     return retval;
 }
 

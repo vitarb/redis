@@ -2388,6 +2388,7 @@ static void zdiffAlgorithm1(zsetopsrc *src, long setnum, zset *dstzset, size_t *
         }
 
         if (!exists) {
+            // TODO since now dict owns the key, we can store a reference into zsl and avoid copying sds.
             tmp = zuiNewSdsFromValue(&zval);
             znode = zslInsert(dstzset->zsl,zval.score,tmp);
             dictAdd(dstzset->dict,tmp,&znode->score);
@@ -2428,6 +2429,7 @@ static void zdiffAlgorithm2(zsetopsrc *src, long setnum, zset *dstzset, size_t *
         zuiInitIterator(&src[j]);
         while (zuiNext(&src[j],&zval)) {
             if (j == 0) {
+                // TODO since now dict owns the key, we can store a reference into zsl and avoid copying sds.
                 tmp = zuiNewSdsFromValue(&zval);
                 znode = zslInsert(dstzset->zsl,zval.score,tmp);
                 dictAdd(dstzset->dict,tmp,&znode->score);
@@ -2511,7 +2513,10 @@ dictType setAccumulatorDictType = {
     dictSdsKeyCompare,         /* key compare */
     NULL,                      /* key destructor */
     NULL,                      /* val destructor */
-    NULL                       /* allow to expand */
+    NULL,                       /* allow to expand */
+    NULL,
+    dictSdsKeyLen,
+    dictSdsKeyToBytes
 };
 
 /* The zunionInterDiffGenericCommand() function is called in order to implement the
@@ -2687,6 +2692,7 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
                         break;
                     }
                 } else if (j == setnum) {
+                    // TODO since now dict owns the key, we can store a reference into zsl and avoid copying sds.
                     tmp = zuiNewSdsFromValue(&zval);
                     znode = zslInsert(dstzset->zsl,score,tmp);
                     dictAdd(dstzset->dict,tmp,&znode->score);
@@ -2723,14 +2729,13 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
                 de = dictAddRaw(accumulator,zuiSdsFromValue(&zval),&existing);
                 /* If we don't have it, we need to create a new entry. */
                 if (!existing) {
-                    tmp = zuiNewSdsFromValue(&zval);
+                    tmp = zuiSdsFromValue(&zval);
                     /* Remember the longest single element encountered,
                      * to understand if it's possible to convert to listpack
                      * at the end. */
                      totelelen += sdslen(tmp);
                      if (sdslen(tmp) > maxelelen) maxelelen = sdslen(tmp);
                     /* Update the element with its initial score. */
-                    dictSetKey(accumulator, de, tmp);
                     dictSetDoubleVal(de,score);
                 } else {
                     /* Update the score with the score of the new instance
@@ -2754,7 +2759,7 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
         dictExpand(dstzset->dict,dictSize(accumulator));
 
         while((de = dictNext(di)) != NULL) {
-            sds ele = dictGetKey(de);
+            sds ele = sdsdup(dictGetKey(de));
             score = dictGetDoubleVal(de);
             znode = zslInsert(dstzset->zsl,score,ele);
             dictAdd(dstzset->dict,ele,&znode->score);
@@ -4190,7 +4195,7 @@ void zrandmemberWithCountCommand(client *c, long l, int withscores) {
         dictExpand(d, size);
         /* Add all the elements into the temporary dictionary. */
         while (zuiNext(&src, &zval)) {
-            sds key = zuiNewSdsFromValue(&zval);
+            sds key = zuiSdsFromValue(&zval);
             dictEntry *de = dictAddRaw(d, key, NULL);
             serverAssert(de);
             if (withscores)
@@ -4202,9 +4207,7 @@ void zrandmemberWithCountCommand(client *c, long l, int withscores) {
         while (size > count) {
             dictEntry *de;
             de = dictGetFairRandomKey(d);
-            dictUnlink(d,dictGetKey(de));
-            sdsfree(dictGetKey(de));
-            dictFreeUnlinkedEntry(d,de);
+            dictDelete(d,dictGetKey(de));
             size--;
         }
 
@@ -4215,7 +4218,8 @@ void zrandmemberWithCountCommand(client *c, long l, int withscores) {
         while ((de = dictNext(di)) != NULL) {
             if (withscores && c->resp > 2)
                 addReplyArrayLen(c,2);
-            addReplyBulkSds(c, dictGetKey(de));
+            sds key = dictGetKey(de);
+            addReplyBulkCBuffer(c, key, sdslen(key));
             if (withscores)
                 addReplyDouble(c, dictGetDoubleVal(de));
         }
@@ -4258,8 +4262,7 @@ void zrandmemberWithCountCommand(client *c, long l, int withscores) {
             * free it, otherwise increment the number of objects we have
             * in the result dictionary. */
             sds skey = zsetSdsFromListpackEntry(&key);
-            if (dictAdd(d,skey,NULL) != DICT_OK) {
-                sdsfree(skey);
+            if (dictAddAndDestroyKey(d,skey,NULL) != DICT_OK) {
                 continue;
             }
             added++;

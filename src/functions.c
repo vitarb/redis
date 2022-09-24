@@ -70,7 +70,10 @@ dictType engineDictType = {
         dictSdsKeyCaseCompare, /* key compare */
         dictSdsDestructor,     /* key destructor */
         NULL,                  /* val destructor */
-        NULL                   /* allow to expand */
+        NULL,                   /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 dictType functionDictType = {
@@ -80,7 +83,10 @@ dictType functionDictType = {
         dictSdsKeyCaseCompare,/* key compare */
         dictSdsDestructor,    /* key destructor */
         NULL,                 /* val destructor */
-        NULL                  /* allow to expand */
+        NULL,                 /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 dictType engineStatsDictType = {
@@ -90,7 +96,10 @@ dictType engineStatsDictType = {
         dictSdsKeyCaseCompare,/* key compare */
         dictSdsDestructor,    /* key destructor */
         engineStatsDispose,   /* val destructor */
-        NULL                  /* allow to expand */
+        NULL,                 /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 dictType libraryFunctionDictType = {
@@ -100,7 +109,10 @@ dictType libraryFunctionDictType = {
         dictSdsKeyCompare,    /* key compare */
         dictSdsDestructor,    /* key destructor */
         engineFunctionDispose,/* val destructor */
-        NULL                  /* allow to expand */
+        NULL,                 /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 dictType librariesDictType = {
@@ -110,7 +122,10 @@ dictType librariesDictType = {
         dictSdsKeyCompare,    /* key compare */
         dictSdsDestructor,    /* key destructor */
         engineLibraryDispose, /* val destructor */
-        NULL                  /* allow to expand */
+        NULL,                 /* allow to expand */
+        NULL,
+        dictSdsKeyLen,
+        dictSdsKeyToBytes
 };
 
 /* Dictionary of engines */
