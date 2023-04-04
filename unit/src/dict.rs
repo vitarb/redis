@@ -80,36 +80,6 @@ where
         }
     }
 }
-#[repr(C)]
-#[derive(Default)]
-pub struct __IncompleteArrayField<T>(::core::marker::PhantomData<T>, [T; 0]);
-impl<T> __IncompleteArrayField<T> {
-    #[inline]
-    pub const fn new() -> Self {
-        __IncompleteArrayField(::core::marker::PhantomData, [])
-    }
-    #[inline]
-    pub fn as_ptr(&self) -> *const T {
-        self as *const _ as *const T
-    }
-    #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        self as *mut _ as *mut T
-    }
-    #[inline]
-    pub unsafe fn as_slice(&self, len: usize) -> &[T] {
-        ::core::slice::from_raw_parts(self.as_ptr(), len)
-    }
-    #[inline]
-    pub unsafe fn as_mut_slice(&mut self, len: usize) -> &mut [T] {
-        ::core::slice::from_raw_parts_mut(self.as_mut_ptr(), len)
-    }
-}
-impl<T> ::core::fmt::Debug for __IncompleteArrayField<T> {
-    fn fmt(&self, fmt: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        fmt.write_str("__IncompleteArrayField")
-    }
-}
 pub const _LIBC_LIMITS_H_: u32 = 1;
 pub const _FEATURES_H: u32 = 1;
 pub const _DEFAULT_SOURCE: u32 = 1;
@@ -2476,9 +2446,161 @@ extern "C" {
     pub fn getloadavg(__loadavg: *mut f64, __nelem: ::core::ffi::c_int) -> ::core::ffi::c_int;
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct dictEntry {
-    _unused: [u8; 0],
+    pub key: *mut ::core::ffi::c_void,
+    pub v: dictEntry__bindgen_ty_1,
+    pub next: *mut dictEntry,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub union dictEntry__bindgen_ty_1 {
+    pub val: *mut ::core::ffi::c_void,
+    pub u64_: u64,
+    pub s64: i64,
+    pub d: f64,
+}
+#[test]
+fn bindgen_test_layout_dictEntry__bindgen_ty_1() {
+    const UNINIT: ::core::mem::MaybeUninit<dictEntry__bindgen_ty_1> =
+        ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<dictEntry__bindgen_ty_1>(),
+        8usize,
+        concat!("Size of: ", stringify!(dictEntry__bindgen_ty_1))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<dictEntry__bindgen_ty_1>(),
+        8usize,
+        concat!("Alignment of ", stringify!(dictEntry__bindgen_ty_1))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).val) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntry__bindgen_ty_1),
+            "::",
+            stringify!(val)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).u64_) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntry__bindgen_ty_1),
+            "::",
+            stringify!(u64_)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).s64) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntry__bindgen_ty_1),
+            "::",
+            stringify!(s64)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).d) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntry__bindgen_ty_1),
+            "::",
+            stringify!(d)
+        )
+    );
+}
+#[test]
+fn bindgen_test_layout_dictEntry() {
+    const UNINIT: ::core::mem::MaybeUninit<dictEntry> = ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<dictEntry>(),
+        24usize,
+        concat!("Size of: ", stringify!(dictEntry))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<dictEntry>(),
+        8usize,
+        concat!("Alignment of ", stringify!(dictEntry))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).key) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntry),
+            "::",
+            stringify!(key)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).v) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntry),
+            "::",
+            stringify!(v)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).next) as usize - ptr as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntry),
+            "::",
+            stringify!(next)
+        )
+    );
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct dictEntryNoValue {
+    pub key: *mut ::core::ffi::c_void,
+    pub next: *mut dictEntry,
+}
+#[test]
+fn bindgen_test_layout_dictEntryNoValue() {
+    const UNINIT: ::core::mem::MaybeUninit<dictEntryNoValue> = ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<dictEntryNoValue>(),
+        16usize,
+        concat!("Size of: ", stringify!(dictEntryNoValue))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<dictEntryNoValue>(),
+        8usize,
+        concat!("Alignment of ", stringify!(dictEntryNoValue))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).key) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntryNoValue),
+            "::",
+            stringify!(key)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).next) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictEntryNoValue),
+            "::",
+            stringify!(next)
+        )
+    );
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -2511,12 +2633,10 @@ pub struct dictType {
     pub expandAllowed: ::core::option::Option<
         unsafe extern "C" fn(moreMem: usize, usedRatio: f64) -> ::core::ffi::c_int,
     >,
+    pub rehashingStarted: ::core::option::Option<unsafe extern "C" fn(d: *mut dict)>,
     pub _bitfield_align_1: [u8; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 1usize]>,
-    pub dictEntryMetadataBytes: ::core::option::Option<unsafe extern "C" fn(d: *mut dict) -> usize>,
-    pub dictMetadataBytes: ::core::option::Option<unsafe extern "C" fn() -> usize>,
-    pub afterReplaceEntry:
-        ::core::option::Option<unsafe extern "C" fn(d: *mut dict, entry: *mut dictEntry)>,
+    pub __bindgen_padding_0: [u8; 7usize],
 }
 #[test]
 fn bindgen_test_layout_dictType() {
@@ -2524,7 +2644,7 @@ fn bindgen_test_layout_dictType() {
     let ptr = UNINIT.as_ptr();
     assert_eq!(
         ::core::mem::size_of::<dictType>(),
-        88usize,
+        72usize,
         concat!("Size of: ", stringify!(dictType))
     );
     assert_eq!(
@@ -2603,33 +2723,13 @@ fn bindgen_test_layout_dictType() {
         )
     );
     assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).dictEntryMetadataBytes) as usize - ptr as usize },
-        64usize,
+        unsafe { ::core::ptr::addr_of!((*ptr).rehashingStarted) as usize - ptr as usize },
+        56usize,
         concat!(
             "Offset of field: ",
             stringify!(dictType),
             "::",
-            stringify!(dictEntryMetadataBytes)
-        )
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).dictMetadataBytes) as usize - ptr as usize },
-        72usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(dictType),
-            "::",
-            stringify!(dictMetadataBytes)
-        )
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).afterReplaceEntry) as usize - ptr as usize },
-        80usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(dictType),
-            "::",
-            stringify!(afterReplaceEntry)
+            stringify!(rehashingStarted)
         )
     );
 }
@@ -2674,7 +2774,7 @@ impl dictType {
     }
 }
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct dict {
     pub type_: *mut dictType,
     pub ht_table: [*mut *mut dictEntry; 2usize],
@@ -2682,7 +2782,6 @@ pub struct dict {
     pub rehashidx: ::core::ffi::c_long,
     pub pauserehash: i16,
     pub ht_size_exp: [::core::ffi::c_schar; 2usize],
-    pub metadata: __IncompleteArrayField<*mut ::core::ffi::c_void>,
 }
 #[test]
 fn bindgen_test_layout_dict() {
@@ -2756,16 +2855,6 @@ fn bindgen_test_layout_dict() {
             stringify!(dict),
             "::",
             stringify!(ht_size_exp)
-        )
-    );
-    assert_eq!(
-        unsafe { ::core::ptr::addr_of!((*ptr).metadata) as usize - ptr as usize },
-        56usize,
-        concat!(
-            "Offset of field: ",
-            stringify!(dict),
-            "::",
-            stringify!(metadata)
         )
     );
 }
@@ -2865,6 +2954,102 @@ fn bindgen_test_layout_dictIterator() {
         )
     );
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct dictStats {
+    pub htidx: ::core::ffi::c_int,
+    pub buckets: ::core::ffi::c_ulong,
+    pub maxChainLen: ::core::ffi::c_ulong,
+    pub totalChainLen: ::core::ffi::c_ulong,
+    pub htSize: ::core::ffi::c_ulong,
+    pub htUsed: ::core::ffi::c_ulong,
+    pub clvector: *mut ::core::ffi::c_ulong,
+}
+#[test]
+fn bindgen_test_layout_dictStats() {
+    const UNINIT: ::core::mem::MaybeUninit<dictStats> = ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<dictStats>(),
+        56usize,
+        concat!("Size of: ", stringify!(dictStats))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<dictStats>(),
+        8usize,
+        concat!("Alignment of ", stringify!(dictStats))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).htidx) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictStats),
+            "::",
+            stringify!(htidx)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).buckets) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictStats),
+            "::",
+            stringify!(buckets)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).maxChainLen) as usize - ptr as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictStats),
+            "::",
+            stringify!(maxChainLen)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).totalChainLen) as usize - ptr as usize },
+        24usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictStats),
+            "::",
+            stringify!(totalChainLen)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).htSize) as usize - ptr as usize },
+        32usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictStats),
+            "::",
+            stringify!(htSize)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).htUsed) as usize - ptr as usize },
+        40usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictStats),
+            "::",
+            stringify!(htUsed)
+        )
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).clvector) as usize - ptr as usize },
+        48usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(dictStats),
+            "::",
+            stringify!(clvector)
+        )
+    );
+}
 pub type dictScanFunction = ::core::option::Option<
     unsafe extern "C" fn(privdata: *mut ::core::ffi::c_void, de: *const dictEntry),
 >;
@@ -2930,6 +3115,9 @@ pub const dictResizeEnable_DICT_RESIZE_FORBID: dictResizeEnable = 2;
 pub type dictResizeEnable = ::core::ffi::c_uint;
 extern "C" {
     pub fn dictCreate(type_: *mut dictType) -> *mut dict;
+}
+extern "C" {
+    pub fn dictCreateMultiple(type_: *mut dictType, count: ::core::ffi::c_int) -> *mut *mut dict;
 }
 extern "C" {
     pub fn dictExpand(d: *mut dict, size: ::core::ffi::c_ulong) -> ::core::ffi::c_int;
@@ -3125,7 +3313,7 @@ extern "C" {
     pub fn dictRehash(d: *mut dict, n: ::core::ffi::c_int) -> ::core::ffi::c_int;
 }
 extern "C" {
-    pub fn dictRehashMilliseconds(d: *mut dict, ms: ::core::ffi::c_int) -> ::core::ffi::c_int;
+    pub fn dictRehashMilliseconds(d: *mut dict, ms: ::core::ffi::c_uint) -> ::core::ffi::c_int;
 }
 extern "C" {
     pub fn dictSetHashFunctionSeed(seed: *mut u8);
@@ -3159,4 +3347,20 @@ extern "C" {
         oldptr: *const ::core::ffi::c_void,
         hash: u64,
     ) -> *mut dictEntry;
+}
+extern "C" {
+    pub fn dictGetStatsMsg(
+        buf: *mut ::core::ffi::c_char,
+        bufsize: usize,
+        stats: *mut dictStats,
+    ) -> usize;
+}
+extern "C" {
+    pub fn dictGetStatsHt(d: *mut dict, htidx: ::core::ffi::c_int) -> *mut dictStats;
+}
+extern "C" {
+    pub fn dictCombineStats(from: *mut dictStats, into: *mut dictStats);
+}
+extern "C" {
+    pub fn dictFreeStats(stats: *mut dictStats);
 }

@@ -44,8 +44,24 @@
 #define DICT_OK 0
 #define DICT_ERR 1
 
-typedef struct dictEntry dictEntry; /* opaque */
 typedef struct dict dict;
+typedef struct dictEntry {
+    void *key;
+    union {
+        void *val;
+        uint64_t u64;
+        int64_t s64;
+        double d;
+    } v;
+    struct dictEntry *next;     /* Next entry in the same hash bucket. */
+} dictEntry;
+
+typedef struct {
+    void *key;
+    dictEntry *next;
+} dictEntryNoValue;
+
+
 
 typedef struct dictType {
     uint64_t (*hashFunction)(const void *key);
