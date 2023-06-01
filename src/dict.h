@@ -59,7 +59,7 @@ typedef struct dictType {
     size_t (*keyLen)(const void *key);
     size_t (*keyToBytes)(unsigned char *buf, const void *key, uint8_t *header_size);
     size_t (*valLen)(const void *val);
-    void (*valToBytes)(unsigned char *buf, const void *val);
+    void (*valToBytes)(unsigned char *buf, const void *val, size_t n_bytes);
 
     /* Flags */
     /* The 'no_value' flag, if set, indicates that values are not used, i.e. the
@@ -175,7 +175,7 @@ int dictAdd(dict *d, void *key, void *val);
 dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing);
 dictEntry *dictAddWithValue(dict *d, void *key, void *val);
 void *dictFindPositionForInsert(dict *d, const void *key, dictEntry **existing);
-dictEntry *dictInsertAtPosition(dict *d, void *key, void *position);
+dictEntry *dictInsertAtPosition(dict *d, void *key, void *val, void *position);
 dictEntry *dictAddOrFind(dict *d, void *key);
 int dictReplace(dict *d, void *key, void *val);
 int dictDelete(dict *d, const void *key);

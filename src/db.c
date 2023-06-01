@@ -27,6 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "dict.h"
 #include "server.h"
 #include "cluster.h"
 #include "atomicvar.h"
@@ -229,9 +230,8 @@ robj *lookupKeyWriteOrReply(client *c, robj *key, robj *reply) {
 void dbAdd(redisDb *db, robj *key, robj *val) {
     int slot = getKeySlot(key->ptr);
     dict *d = db->dict[slot];
-    dictEntry *de = dictAddWithValue(d, key->ptr, val->ptr);
-    serverAssertWithInfo(NULL, key, de != NULL);
-    dictSetVal(d, de, val);
+    dictEntry *de = dictAddWithValue(d, key->ptr, val);
+    serverAssert(de != NULL);
     db->key_count++;
     cumulativeKeyCountAdd(db, slot, 1);
     signalKeyAsReady(db, key, val->type);
@@ -271,9 +271,8 @@ int getKeySlot(sds key) {
 int dbAddRDBLoad(redisDb *db, sds key, robj *val) {
     int slot = getKeySlot(key);
     dict *d = db->dict[slot];
-    dictEntry *de = dictAddRaw(d, key, NULL);
-    if (de == NULL) return 0;
-    dictSetVal(d, de, val);
+    dictEntry *de = dictAddWithValue(d, key, val);
+    serverAssert(de != NULL);
     db->key_count++;
     cumulativeKeyCountAdd(db, slot, 1);
     return 1;
@@ -963,7 +962,7 @@ int parseScanCursorOrReply(client *c, robj *o, unsigned long long *cursor) {
     /* Use strtouq() because we need an *unsigned* long long, so
      * getLongLongFromObject() does not cover the whole cursor space. */
     errno = 0;
-    *cursor = strtouq(o->ptr, &eptr, 10);
+    *cursor = strtoull(o->ptr, &eptr, 10);
     if (isspace(((char*)o->ptr)[0]) || eptr[0] != '\0' || errno == ERANGE)
     {
         addReplyError(c, "invalid cursor");

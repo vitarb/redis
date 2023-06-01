@@ -74,7 +74,6 @@ struct dictEntry {
 
 typedef struct {
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
-    uint8_t val_embedded:1;
     unsigned char data[];
 } embeddedDictEntry;
 
@@ -166,7 +165,7 @@ static inline dictEntry *createEmbeddedEntry(void *key, void *val, dictEntry *ne
     embeddedDictEntry *entry = zmalloc(sizeof(*entry) + keyLen + valLen + ENTRY_METADATA_BYTES);
     size_t bytes_written = dt->keyToBytes(entry->data + ENTRY_METADATA_BYTES, key, &entry->data[0]);
     assert(bytes_written == keyLen);
-    // TODO write value to data[].
+    dt->valToBytes(entry->data + ENTRY_METADATA_BYTES + keyLen, val, valLen);
     entry->next = next;
     return (dictEntry *)(void *)((uintptr_t)(void *)entry | ENTRY_PTR_EMBEDDED);
 }
@@ -184,6 +183,12 @@ static inline void *decodeMaskedPtr(const dictEntry *de) {
 static inline void *getEmbeddedKey(const dictEntry *de) {
     embeddedDictEntry *entry = (embeddedDictEntry *)decodeMaskedPtr(de);
     return &entry->data[ENTRY_METADATA_BYTES + entry->data[0]];
+}
+
+static inline void *getEmbeddedVal(const dictEntry *de) {
+    embeddedDictEntry *entry = (embeddedDictEntry *)decodeMaskedPtr(de);
+    sds key = (sds)&entry->data[ENTRY_METADATA_BYTES + entry->data[0]];
+    return &entry->data[ENTRY_METADATA_BYTES + sdsAllocSize(key)];
 }
 
 /* Decodes the pointer to an entry without value, when you know it is an entry
@@ -460,8 +465,11 @@ int dictAdd(dict *d, void *key, void *val)
 }
 
 dictEntry *dictAddWithValue(dict *d, void *key, void *val) {
-    serverAssert(d->type->embedded_entry);
-    return NULL;
+    assert(d->type->embedded_entry);
+    void *position = dictFindPositionForInsert(d, key, NULL);
+    assert(position);
+
+    return dictInsertAtPosition(d, key, val, position);
 }
 
 
@@ -492,14 +500,14 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
     /* Dup the key if necessary. */
     if (d->type->keyDup) key = d->type->keyDup(d, key);
 
-    return dictInsertAtPosition(d, key, position);
+    return dictInsertAtPosition(d, key, NULL, position);
 }
 
 /* Adds a key in the dict's hashtable at the position returned by a preceding
  * call to dictFindPositionForInsert. This is a low level function which allows
  * splitting dictAddRaw in two parts. Normally, dictAddRaw or dictAdd should be
  * used instead. */
-dictEntry *dictInsertAtPosition(dict *d, void *key, void *position) { /* TODO Add value as well */
+dictEntry *dictInsertAtPosition(dict *d, void *key, void *val, void *position) {
     dictEntry **bucket = position; /* It's a bucket, but the API hides that. */
     dictEntry *entry;
     /* If rehashing is ongoing, we insert in table 1, otherwise in table 0.
@@ -523,7 +531,8 @@ dictEntry *dictInsertAtPosition(dict *d, void *key, void *position) { /* TODO Ad
             entry = createEntryNoValue(key, *bucket);
         }
     } else if (d->type->embedded_entry){
-        entry = createEmbeddedEntry(key, *bucket, d->type);
+        assert(val);
+        entry = createEmbeddedEntry(key, val, *bucket, d->type);
     } else {
         /* Allocate the memory and store the new entry.
          * Insert the element in top, with the assumption that in a database
@@ -791,11 +800,8 @@ void dictSetKey(dict *d, dictEntry* de, void *key) {
 void dictSetVal(dict *d, dictEntry *de, void *val) {
     assert(entryHasValue(de));
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
-    if (entryIsEmbedded(de)) { /* Add assertion to crash if it's embedded */
-        decodeEmbeddedEntry(de)->v.val = v;
-    } else {
-        de->v.val = v;
-    }
+    assert(!entryIsEmbedded(de)); /* Embedded entries can not change their values. */
+    de->v.val = v;
 }
 
 void dictSetSignedIntegerVal(dictEntry *de, int64_t val) {
@@ -838,7 +844,7 @@ void *dictGetKey(const dictEntry *de) {
 void *dictGetVal(const dictEntry *de) {
     assert(entryHasValue(de));
     if (entryIsEmbedded(de)) {
-        return decodeEmbeddedEntry(de)->v.val;
+        return getEmbeddedVal(de);
     }
     return de->v.val;
 }
@@ -1181,7 +1187,7 @@ static void dictDefragBucket(dictEntry **bucketref, dictDefragFunctions *defragf
                 newde = encodeMaskedPtr(newentry, ENTRY_PTR_EMBEDDED);
                 entry = newentry;
             }
-            if (newval) entry->v.val = newval;
+            // if (newval) entry->v.val = newval;
         } else {
             assert(entryIsNormal(de));
             newde = defragalloc(de);
