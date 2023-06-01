@@ -27,7 +27,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "dict.h"
 #include "server.h"
 #include "cluster.h"
 #include "atomicvar.h"
