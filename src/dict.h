@@ -57,7 +57,10 @@ typedef struct dictType {
     int (*expandAllowed)(size_t moreMem, double usedRatio);
     void (*rehashingStarted)(dict *d);
     size_t (*keyLen)(const void *key);
-    size_t (*keyToBytes)(unsigned char *buf, const void *key, unsigned char *header_size);
+    size_t (*keyToBytes)(unsigned char *buf, const void *key, uint8_t *header_size);
+    size_t (*valLen)(const void *val);
+    void (*valToBytes)(unsigned char *buf, const void *val);
+
     /* Flags */
     /* The 'no_value' flag, if set, indicates that values are not used, i.e. the
      * dict is a set. When this flag is set, it's not possible to access the
@@ -170,6 +173,7 @@ int dictTryExpand(dict *d, unsigned long size);
 void *dictMetadata(dict *d);
 int dictAdd(dict *d, void *key, void *val);
 dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing);
+dictEntry *dictAddWithValue(dict *d, void *key, void *val);
 void *dictFindPositionForInsert(dict *d, const void *key, dictEntry **existing);
 dictEntry *dictInsertAtPosition(dict *d, void *key, void *position);
 dictEntry *dictAddOrFind(dict *d, void *key);

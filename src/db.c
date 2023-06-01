@@ -229,7 +229,7 @@ robj *lookupKeyWriteOrReply(client *c, robj *key, robj *reply) {
 void dbAdd(redisDb *db, robj *key, robj *val) {
     int slot = getKeySlot(key->ptr);
     dict *d = db->dict[slot];
-    dictEntry *de = dictAddRaw(d, key->ptr, NULL);
+    dictEntry *de = dictAddWithValue(d, key->ptr, val->ptr);
     serverAssertWithInfo(NULL, key, de != NULL);
     dictSetVal(d, de, val);
     db->key_count++;

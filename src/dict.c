@@ -43,6 +43,7 @@
 #include <limits.h>
 #include <sys/time.h>
 
+#include "sds.h"
 #include "dict.h"
 #include "zmalloc.h"
 #include "redisassert.h"
@@ -72,13 +73,8 @@ struct dictEntry {
 };
 
 typedef struct {
-    union {
-        void *val;
-        uint64_t u64;
-        int64_t s64;
-        double d;
-    } v;
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
+    uint8_t val_embedded:1;
     unsigned char data[];
 } embeddedDictEntry;
 
@@ -164,11 +160,13 @@ static inline dictEntry *createEntryNoValue(void *key, dictEntry *next) {
     return (dictEntry *)(void *)((uintptr_t)(void *)entry | ENTRY_PTR_NO_VALUE);
 }
 
-static inline dictEntry *createEmbeddedEntry(void *key, dictEntry *next, dictType *dt) {
+static inline dictEntry *createEmbeddedEntry(void *key, void *val, dictEntry *next, dictType *dt) {
     size_t keyLen = dt->keyLen(key);
-    embeddedDictEntry *entry = zmalloc(sizeof(*entry) + keyLen + ENTRY_METADATA_BYTES);
+    size_t valLen = dt->valLen(val);
+    embeddedDictEntry *entry = zmalloc(sizeof(*entry) + keyLen + valLen + ENTRY_METADATA_BYTES);
     size_t bytes_written = dt->keyToBytes(entry->data + ENTRY_METADATA_BYTES, key, &entry->data[0]);
     assert(bytes_written == keyLen);
+    // TODO write value to data[].
     entry->next = next;
     return (dictEntry *)(void *)((uintptr_t)(void *)entry | ENTRY_PTR_EMBEDDED);
 }
@@ -461,6 +459,12 @@ int dictAdd(dict *d, void *key, void *val)
     return DICT_OK;
 }
 
+dictEntry *dictAddWithValue(dict *d, void *key, void *val) {
+    serverAssert(d->type->embedded_entry);
+    return NULL;
+}
+
+
 /* Low level add or find:
  * This function adds the entry but instead of setting a value returns the
  * dictEntry structure to the user, that will make sure to fill the value
@@ -495,7 +499,7 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
  * call to dictFindPositionForInsert. This is a low level function which allows
  * splitting dictAddRaw in two parts. Normally, dictAddRaw or dictAdd should be
  * used instead. */
-dictEntry *dictInsertAtPosition(dict *d, void *key, void *position) {
+dictEntry *dictInsertAtPosition(dict *d, void *key, void *position) { /* TODO Add value as well */
     dictEntry **bucket = position; /* It's a bucket, but the API hides that. */
     dictEntry *entry;
     /* If rehashing is ongoing, we insert in table 1, otherwise in table 0.
@@ -734,7 +738,7 @@ void *dictFetchValue(dict *d, const void *key) {
  * We can use like this:
  *
  * dictEntry *de = dictTwoPhaseUnlinkFind(db->dict,key->ptr,&plink, &table);
- * // Do something, but we can't modify the dict
+ * // Do something, but -we can't modify the dict
  * dictTwoPhaseUnlinkFree(db->dict,de,plink,table); // We don't need to lookup again
  *
  * If we want to find an entry before delete this entry, this an optimization to avoid
@@ -787,7 +791,7 @@ void dictSetKey(dict *d, dictEntry* de, void *key) {
 void dictSetVal(dict *d, dictEntry *de, void *val) {
     assert(entryHasValue(de));
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
-    if (entryIsEmbedded(de)) {
+    if (entryIsEmbedded(de)) { /* Add assertion to crash if it's embedded */
         decodeEmbeddedEntry(de)->v.val = v;
     } else {
         de->v.val = v;

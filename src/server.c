@@ -268,6 +268,15 @@ int dictSdsKeyCompare(dict *d, const void *key1,
     return memcmp(key1, key2, l1) == 0;
 }
 
+size_t dictObjectValLen(const void *val) { 
+    robj *o = (robj*)val;
+    if (o->encoding != OBJ_ENCODING_EMBSTR) {
+        return zmalloc_size(val);
+    } else {
+        return sizeof(robj);
+    }
+}
+
 size_t dictSdsKeyLen(const void *key) { return sdsAllocSize((sds)key); }
 
 size_t dictSdsKeyToBytes(unsigned char *buf, const void *key, unsigned char *header_size) {
@@ -276,6 +285,10 @@ size_t dictSdsKeyToBytes(unsigned char *buf, const void *key, unsigned char *hea
     memcpy(buf, sdsAllocPtr(keySds), n_bytes);
     *header_size = sdsHdrSize(keySds[-1]);
     return n_bytes;
+}
+
+void dictObjectValToBytes(unsigned char *buf, const void *val, size_t n_bytes) {
+    memcpy(buf, val, n_bytes);
 }
 
 /* A case insensitive version used for the command lookup table and other
@@ -471,6 +484,8 @@ dictType dbDictType = {
     dictRehashingStarted,
     dictSdsKeyLen,
     dictSdsKeyToBytes,
+    dictObjectValLen,
+    dictObjectValToBytes,
     .embedded_entry = 1
 };
 
