@@ -270,7 +270,7 @@ int dictSdsKeyCompare(dict *d, const void *key1,
 
 size_t dictObjectValLen(const void *val) { 
     robj *o = (robj*)val;
-    if (o->encoding != OBJ_ENCODING_EMBSTR) {
+    if (o->encoding == OBJ_ENCODING_EMBSTR) {
         return zmalloc_size((void *)val);
     } else {
         return sizeof(robj);
