@@ -304,7 +304,7 @@ void dictObjectDestructor(dict *d, void *val)
 {
     UNUSED(d);
     if (val == NULL) return; /* Lazy freeing will set value to NULL. */
-    // decrRefCount(val);
+    decrRefCount(val);
 }
 
 void dictSdsDestructor(dict *d, void *val)

@@ -231,6 +231,7 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
     dict *d = db->dict[slot];
     dictEntry *de = dictAddWithValue(d, key->ptr, val);
     serverAssert(de != NULL);
+    serverAssertWithInfo(NULL,key,dictFind(db->dict[getKeySlot(key->ptr)], key->ptr) != NULL);
     db->key_count++;
     cumulativeKeyCountAdd(db, slot, 1);
     signalKeyAsReady(db, key, val->type);
@@ -312,12 +313,14 @@ static void dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     }
     dictSetVal(d, de, val);
 
-    if (server.lazyfree_lazy_server_del) {
-        freeObjAsync(key,old,db->id);
-    } else {
-        /* This is just decrRefCount(old); */
-        d->type->valDestructor(d, old);
-    }
+    /* old embedded entry is already cleaned up */
+    // if (server.lazyfree_lazy_server_del) {
+    //     freeObjAsync(key,old,db->id);
+    // } else {
+    //     /* This is just decrRefCount(old); */
+    //     d->type->valDestructor(d, old);
+    // } 
+    
 }
 
 /* Replace an existing key with a new value, we just replace value and don't
@@ -352,7 +355,6 @@ void setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
     } else {
         dbSetValue(db,key,val,1);
     }
-    incrRefCount(val);
     if (!(flags & SETKEY_KEEPTTL)) removeExpire(db,key);
     if (!(flags & SETKEY_NO_SIGNAL)) signalModifiedKey(c,db,key);
 }
