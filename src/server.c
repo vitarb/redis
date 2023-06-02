@@ -307,6 +307,13 @@ void dictObjectDestructor(dict *d, void *val)
     decrRefCount(val);
 }
 
+void dictEmbeddedValueDestructor(dict *d, void *val)
+{
+    UNUSED(d);
+    if (val == NULL) return; /* Lazy freeing will set value to NULL. */
+    decrRefCountNoFree(val);
+}
+
 void dictSdsDestructor(dict *d, void *val)
 {
     UNUSED(d);
@@ -479,7 +486,7 @@ dictType dbDictType = {
     NULL,                       /* val dup */
     dictSdsKeyCompare,          /* key compare */
     NULL,                       /* Note: key (sds) is stored in the embedded buffer, will be released internally */
-    dictObjectDestructor,       /* val destructor */
+    dictEmbeddedValueDestructor, /* val destructor */
     dictExpandAllowed,          /* allow to expand */
     dictRehashingStarted,
     dictSdsKeyLen,
