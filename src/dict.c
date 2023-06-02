@@ -668,8 +668,6 @@ void dictFreeUnlinkedEntry(dict *d, dictEntry *he) {
     if (he == NULL) return;
     dictFreeKey(d, he);
     dictFreeVal(d, he);
-    /* Clear the embedded data */
-    if (entryIsEmbedded(he)) zfree(decodeEmbeddedEntry(he)->data);
     /* Clear the dictEntry */
     if (!entryIsKey(he)) zfree(decodeMaskedPtr(he));
 }
@@ -800,7 +798,12 @@ void dictSetKey(dict *d, dictEntry* de, void *key) {
 void dictSetVal(dict *d, dictEntry *de, void *val) {
     assert(entryHasValue(de));
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
-    assert(!entryIsEmbedded(de)); /* Embedded entries can not change their values. */
+    if (entryIsEmbedded(de)) {
+        void *key = dictGetKey(de);
+        dictEntry *unlinked = dictUnlink(d, key);
+        dictAddWithValue(d, key, val);
+        dictFreeUnlinkedEntry(d, unlinked);
+    }
     de->v.val = v;
 }
 
