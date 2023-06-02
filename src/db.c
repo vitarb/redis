@@ -231,6 +231,15 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
     dict *d = db->dict[slot];
     dictEntry *de = dictAddWithValue(d, key->ptr, val);
     serverAssert(de != NULL);
+    void *saved_key = dictGetKey(de);
+    serverAssert(d->type->keyCompare(d, key->ptr, saved_key));
+    if (val->type == OBJ_STRING) {
+        robj *saved_val = (robj*)dictGetVal(de);
+        serverAssert(saved_val != NULL);
+        serverAssert(saved_val->ptr != NULL);
+        serverAssert(d->type->keyCompare(d, val->ptr, saved_val->ptr));
+    }
+
     serverAssertWithInfo(NULL,key,dictFind(db->dict[getKeySlot(key->ptr)], key->ptr) != NULL);
     db->key_count++;
     cumulativeKeyCountAdd(db, slot, 1);
