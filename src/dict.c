@@ -803,8 +803,9 @@ void dictSetVal(dict *d, dictEntry *de, void *val) {
         dictEntry *unlinked = dictUnlink(d, key);
         dictAddWithValue(d, key, val);
         dictFreeUnlinkedEntry(d, unlinked);
+    } else {
+        de->v.val = v;
     }
-    de->v.val = v;
 }
 
 void dictSetSignedIntegerVal(dictEntry *de, int64_t val) {
