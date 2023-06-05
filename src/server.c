@@ -293,7 +293,7 @@ void dictObjectValToBytes(unsigned char *buf, const void *val, size_t n_bytes) {
     // Update robj->ptr for the embedded string to point into the buffer instead of the source.
     if (o->encoding == OBJ_ENCODING_EMBSTR) {
         robj *copy = (robj*)buf; 
-        copy->ptr = buf + sizeof(robj) + 3; // skip robj itself and 3 bytes for sds_hdr8.
+        copy->ptr = buf + sizeof(robj) + sizeof(struct sdshdr8); // skip robj itself and 3 bytes for sds_hdr8.
     }
 }
 
