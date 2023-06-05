@@ -288,7 +288,13 @@ size_t dictSdsKeyToBytes(unsigned char *buf, const void *key, unsigned char *hea
 }
 
 void dictObjectValToBytes(unsigned char *buf, const void *val, size_t n_bytes) {
+    robj *o = (robj*)val;
     memcpy(buf, val, n_bytes);
+    // Update robj->ptr for the embedded string to point into the buffer instead of the source.
+    if (o->encoding == OBJ_ENCODING_EMBSTR) {
+        robj *copy = (robj*)buf; 
+        copy->ptr = buf + sizeof(robj) + 3; // skip robj itself and 3 bytes for sds_hdr8.
+    }
 }
 
 /* A case insensitive version used for the command lookup table and other

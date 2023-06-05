@@ -165,7 +165,7 @@ static inline dictEntry *createEmbeddedEntry(void *key, void *val, dictEntry *ne
     embeddedDictEntry *entry = zmalloc(sizeof(*entry) + keyLen + valLen + ENTRY_METADATA_BYTES);
     size_t bytes_written = dt->keyToBytes(entry->data + ENTRY_METADATA_BYTES, key, &entry->data[0]);
     assert(bytes_written == keyLen);
-    dt->valToBytes(entry->data + ENTRY_METADATA_BYTES + keyLen, val, valLen);
+    dt->valToBytes(&entry->data[ENTRY_METADATA_BYTES + keyLen], val, valLen);
     entry->next = next;
     return (dictEntry *)(void *)((uintptr_t)(void *)entry | ENTRY_PTR_EMBEDDED);
 }
