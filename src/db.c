@@ -233,7 +233,7 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
     serverAssert(de != NULL);
     void *saved_key = dictGetKey(de);
     serverAssert(d->type->keyCompare(d, key->ptr, saved_key));
-    if (val->type == OBJ_STRING) {
+    if (val->type == OBJ_STRING && val->encoding == OBJ_ENCODING_RAW) { // FIXME remove these safety assertions once the branch is stable
         robj *saved_val = (robj*)dictGetVal(de);
         serverAssert(saved_val != NULL);
         serverAssert(saved_val->ptr != NULL);
