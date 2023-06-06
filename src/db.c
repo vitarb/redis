@@ -226,7 +226,8 @@ robj *lookupKeyWriteOrReply(client *c, robj *key, robj *reply) {
  * counter of the value if needed.
  *
  * The program is aborted if the key already exists. */
-void dbAdd(redisDb *db, robj *key, robj *val) {
+void dbAdd(redisDb *db, robj *key, robj **addr_val) {
+    robj *val = *addr_val;
     int slot = getKeySlot(key->ptr);
     dict *d = db->dict[slot];
     dictEntry *de = dictAddWithValue(d, key->ptr, val);
@@ -239,6 +240,8 @@ void dbAdd(redisDb *db, robj *key, robj *val) {
         serverAssert(saved_val->ptr != NULL);
         serverAssert(d->type->keyCompare(d, val->ptr, saved_val->ptr));
     }
+
+    *addr_val = dictGetVal(de);
 
     serverAssertWithInfo(NULL,key,dictFind(db->dict[getKeySlot(key->ptr)], key->ptr) != NULL);
     db->key_count++;
@@ -360,7 +363,7 @@ void setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
         keyfound = (lookupKeyWrite(db,key) != NULL);
 
     if (!keyfound) {
-        dbAdd(db,key,val);
+        dbAdd(db,key,&val);
     } else {
         dbSetValue(db,key,val,1);
     }
@@ -1364,7 +1367,7 @@ void renameGenericCommand(client *c, int nx) {
          * with the same name. */
         dbDelete(c->db,c->argv[2]);
     }
-    dbAdd(c->db,c->argv[2],o);
+    dbAdd(c->db,c->argv[2],&o);
     if (expire != -1) setExpire(c,c->db,c->argv[2],expire);
     dbDelete(c->db,c->argv[1]);
     signalModifiedKey(c,c->db,c->argv[1]);
@@ -1430,7 +1433,7 @@ void moveCommand(client *c) {
         addReply(c,shared.czero);
         return;
     }
-    dbAdd(dst,c->argv[1],o);
+    dbAdd(dst,c->argv[1],&o);
     if (expire != -1) setExpire(c,dst,c->argv[1],expire);
     incrRefCount(o);
 
@@ -1538,7 +1541,7 @@ void copyCommand(client *c) {
         dbDelete(dst,newkey);
     }
 
-    dbAdd(dst,newkey,newobj);
+    dbAdd(dst,newkey,&newobj);
     if (expire != -1) setExpire(c, dst, newkey, expire);
 
     /* OK! key copied */

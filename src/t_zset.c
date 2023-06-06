@@ -1756,7 +1756,7 @@ void zaddGenericCommand(client *c, int flags) {
         } else {
             zobj = createZsetListpackObject();
         }
-        dbAdd(c->db,key,zobj);
+        dbAdd(c->db,key,&zobj);
     }
 
     for (j = 0; j < elements; j++) {
