@@ -228,7 +228,7 @@ void activeDefragZsetEntry(zset *zs, dictEntry *de) {
         dictSetKey(zs->dict, de, newsds);
     newscore = zslDefrag(zs->zsl, *(double*)dictGetVal(de), sdsele, newsds);
     if (newscore) {
-        dictSetVal(zs->dict, de, newscore);
+        dictSetVal(zs->dict, &de, newscore);
     }
 }
 
@@ -677,7 +677,7 @@ void defragValue(redisDb *db, dictEntry *de) {
     /* Try to defrag robj and / or string value. */
     ob = dictGetVal(de);
     if ((newob = activeDefragStringOb(ob))) {
-        dictSetVal(db->dict[calculateKeySlot(dictGetKey(de))], de, newob);
+        dictSetVal(db->dict[calculateKeySlot(dictGetKey(de))], &de, newob);
         ob = newob;
     }
 

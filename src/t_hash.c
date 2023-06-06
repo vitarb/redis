@@ -248,7 +248,7 @@ int hashTypeSet(robj *o, sds field, sds value, int flags) {
         }
         de = dictAddRaw(ht, field, &existing);
         if (de) {
-            dictSetVal(ht, de, v);
+            dictSetVal(ht, &de, v);
             if (flags & HASH_SET_TAKE_FIELD) {
                 field = NULL;
             } else {
@@ -256,7 +256,7 @@ int hashTypeSet(robj *o, sds field, sds value, int flags) {
             }
         } else {
             sdsfree(dictGetVal(existing));
-            dictSetVal(ht, existing, v);
+            dictSetVal(ht, &existing, v);
             update = 1;
         }
     } else {

@@ -240,7 +240,8 @@ void dbAdd(redisDb *db, robj *key, robj **addr_val) {
         serverAssert(saved_val->ptr != NULL);
         serverAssert(d->type->keyCompare(d, val->ptr, saved_val->ptr));
     }
-
+    (*addr_val)->ptr = NULL;
+    decrRefCount(*addr_val);
     *addr_val = dictGetVal(de);
 
     serverAssertWithInfo(NULL,key,dictFind(db->dict[getKeySlot(key->ptr)], key->ptr) != NULL);
@@ -300,14 +301,14 @@ int dbAddRDBLoad(redisDb *db, sds key, robj *val) {
  * update of a value of an existing key (when false).
  *
  * The program is aborted if the key was not already present. */
-static void dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
+static void dbSetValue(redisDb *db, robj *key, robj **val, int overwrite) {
     dict *d = db->dict[getKeySlot(key->ptr)];
     dictEntry *de = dictFind(d, key->ptr);
 
     serverAssertWithInfo(NULL,key,de != NULL);
     robj *old = dictGetVal(de);
     if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
-        val->lru = old->lru;
+        (*val)->lru = old->lru;
     }
     if (overwrite) {
         /* RM_StringDMA may call dbUnshareStringValue which may free val, so we
@@ -323,8 +324,10 @@ static void dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
-    dictSetVal(d, de, val);
-
+    robj *old_val = *val;
+    dictSetVal(d, &de, *val);
+    old_val->ptr = NULL;
+    decrRefCount(old_val);
     /* old embedded entry is already cleaned up */
     // if (server.lazyfree_lazy_server_del) {
     //     freeObjAsync(key,old,db->id);
@@ -338,7 +341,7 @@ static void dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
 /* Replace an existing key with a new value, we just replace value and don't
  * emit any events */
 void dbReplaceValue(redisDb *db, robj *key, robj *val) {
-    dbSetValue(db, key, val, 0);
+    dbSetValue(db, key, &val, 0);
 }
 
 /* High level Set operation. This function can be used in order to set
@@ -365,7 +368,7 @@ void setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
     if (!keyfound) {
         dbAdd(db,key,&val);
     } else {
-        dbSetValue(db,key,val,1);
+        dbSetValue(db,key,&val,1);
     }
     if (!(flags & SETKEY_KEEPTTL)) removeExpire(db,key);
     if (!(flags & SETKEY_NO_SIGNAL)) signalModifiedKey(c,db,key);
@@ -499,7 +502,7 @@ int dbGenericDelete(redisDb *db, robj *key, int async, int flags) {
         if (async) {
             /* Because of dbUnshareStringValue, the val in de may change. */
             freeObjAsync(key, dictGetVal(de), db->id);
-            dictSetVal(d, de, NULL);
+            dictSetVal(d, &de, NULL);
         }
         /* Deleting an entry from the expires dict will not free the sds of
         * the key, because it is shared with the main dictionary. */

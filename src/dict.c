@@ -460,7 +460,7 @@ int dictAdd(dict *d, void *key, void *val)
     dictEntry *entry = dictAddRaw(d,key,NULL);
 
     if (!entry) return DICT_ERR;
-    if (!d->type->no_value) dictSetVal(d, entry, val);
+    if (!d->type->no_value) dictSetVal(d, &entry, val);
     return DICT_OK;
 }
 
@@ -562,7 +562,7 @@ int dictReplace(dict *d, void *key, void *val)
      * does not exists dictAdd will succeed. */
     entry = dictAddRaw(d,key,&existing);
     if (entry) {
-        dictSetVal(d, entry, val);
+        dictSetVal(d, &entry, val);
         return 1;
     }
 
@@ -572,7 +572,7 @@ int dictReplace(dict *d, void *key, void *val)
      * you want to increment (set), and then decrement (free), and not the
      * reverse. */
     void *oldval = dictGetVal(existing);
-    dictSetVal(d, existing, val);
+    dictSetVal(d, &existing, val);
     if (d->type->valDestructor)
         d->type->valDestructor(d, oldval);
     return 0;
@@ -795,16 +795,16 @@ void dictSetKey(dict *d, dictEntry* de, void *key) {
         de->key = key;
 }
 
-void dictSetVal(dict *d, dictEntry *de, void *val) {
-    assert(entryHasValue(de));
+void dictSetVal(dict *d, dictEntry **de, void *val) {
+    assert(entryHasValue(*de));
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
-    if (entryIsEmbedded(de)) {
-        void *key = dictGetKey(de);
+    if (entryIsEmbedded(*de)) {
+        void *key = dictGetKey(*de);
         dictEntry *unlinked = dictUnlink(d, key);
-        dictAddWithValue(d, key, val);
+        *de = dictAddWithValue(d, key, val);
         dictFreeUnlinkedEntry(d, unlinked);
     } else {
-        de->v.val = v;
+        (*de)->v.val = v;
     }
 }
 
