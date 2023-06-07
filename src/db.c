@@ -241,8 +241,9 @@ void dbAdd(redisDb *db, robj *key, robj **addr_val) {
         serverAssert(d->type->keyCompare(d, val->ptr, saved_val->ptr));
     }
     (*addr_val)->ptr = NULL;
-    decrRefCount(*addr_val);
-    *addr_val = dictGetVal(de);
+    zfree(*addr_val);
+    val = dictGetVal(de);
+    *addr_val = val;
 
     serverAssertWithInfo(NULL,key,dictFind(db->dict[getKeySlot(key->ptr)], key->ptr) != NULL);
     db->key_count++;
@@ -301,14 +302,15 @@ int dbAddRDBLoad(redisDb *db, sds key, robj *val) {
  * update of a value of an existing key (when false).
  *
  * The program is aborted if the key was not already present. */
-static void dbSetValue(redisDb *db, robj *key, robj **val, int overwrite) {
+static void dbSetValue(redisDb *db, robj *key, robj **addr_val, int overwrite) {
+    robj *val = (*addr_val);
     dict *d = db->dict[getKeySlot(key->ptr)];
     dictEntry *de = dictFind(d, key->ptr);
 
     serverAssertWithInfo(NULL,key,de != NULL);
     robj *old = dictGetVal(de);
     if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
-        (*val)->lru = old->lru;
+        val->lru = old->lru;
     }
     if (overwrite) {
         /* RM_StringDMA may call dbUnshareStringValue which may free val, so we
@@ -324,10 +326,11 @@ static void dbSetValue(redisDb *db, robj *key, robj **val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
-    robj *old_val = *val;
-    dictSetVal(d, &de, *val);
+    robj *old_val = val;
+    dictSetVal(d, &de, val);
+    *addr_val = dictGetVal(de);
     old_val->ptr = NULL;
-    decrRefCount(old_val);
+    zfree(old_val);
     /* old embedded entry is already cleaned up */
     // if (server.lazyfree_lazy_server_del) {
     //     freeObjAsync(key,old,db->id);
@@ -357,7 +360,7 @@ void dbReplaceValue(redisDb *db, robj *key, robj *val) {
  * All the new keys in the database should be created via this interface.
  * The client 'c' argument may be set to NULL if the operation is performed
  * in a context where there is no clear client performing the operation. */
-void setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
+void setKey(client *c, redisDb *db, robj *key, robj **val, int flags) {
     int keyfound = 0;
 
     if (flags & SETKEY_ALREADY_EXIST)
@@ -366,9 +369,9 @@ void setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
         keyfound = (lookupKeyWrite(db,key) != NULL);
 
     if (!keyfound) {
-        dbAdd(db,key,&val);
+        dbAdd(db,key,val);
     } else {
-        dbSetValue(db,key,&val,1);
+        dbSetValue(db,key,val,1);
     }
     if (!(flags & SETKEY_KEEPTTL)) removeExpire(db,key);
     if (!(flags & SETKEY_NO_SIGNAL)) signalModifiedKey(c,db,key);

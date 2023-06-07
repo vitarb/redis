@@ -3276,7 +3276,7 @@ void dbReplaceValue(redisDb *db, robj *key, robj *val);
 #define SETKEY_NO_SIGNAL 2
 #define SETKEY_ALREADY_EXIST 4
 #define SETKEY_DOESNT_EXIST 8
-void setKey(client *c, redisDb *db, robj *key, robj *val, int flags);
+void setKey(client *c, redisDb *db, robj *key, robj **val, int flags);
 robj *dbRandomKey(redisDb *db);
 int dbGenericDelete(redisDb *db, robj *key, int async, int flags);
 int dbSyncDelete(redisDb *db, robj *key);
