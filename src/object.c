@@ -385,6 +385,10 @@ void incrRefCount(robj *o) {
 }
 
 void decrRefCount(robj *o) {
+    if (o->ptr == NULL) {
+        zfree(o);
+        return;
+    }
     if (o->refcount == 1) {
         switch(o->type) {
         case OBJ_STRING: freeStringObject(o); break;

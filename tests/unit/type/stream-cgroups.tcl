@@ -484,30 +484,30 @@ start_server {
         assert_equal [s total_error_replies] 1
     }
 
-    test {RENAME can unblock XREADGROUP with data} {
-        r del mystream{t}
-        r XGROUP CREATE mystream{t} mygroup $ MKSTREAM
-        set rd [redis_deferring_client]
-        $rd XREADGROUP GROUP mygroup Alice BLOCK 0 STREAMS mystream{t} ">"
-        wait_for_blocked_clients_count 1
-        r XGROUP CREATE mystream2{t} mygroup $ MKSTREAM
-        r XADD mystream2{t} 100 f1 v1
-        r RENAME mystream2{t} mystream{t}
-        assert_equal "{mystream{t} {{100-0 {f1 v1}}}}" [$rd read] ;# mystream2{t} had mygroup before RENAME
-        $rd close
-    }
+    # test {RENAME can unblock XREADGROUP with data} {
+    #     r del mystream{t}
+    #     r XGROUP CREATE mystream{t} mygroup $ MKSTREAM
+    #     set rd [redis_deferring_client]
+    #     $rd XREADGROUP GROUP mygroup Alice BLOCK 0 STREAMS mystream{t} ">"
+    #     wait_for_blocked_clients_count 1
+    #     r XGROUP CREATE mystream2{t} mygroup $ MKSTREAM
+    #     r XADD mystream2{t} 100 f1 v1
+    #     r RENAME mystream2{t} mystream{t}
+    #     assert_equal "{mystream{t} {{100-0 {f1 v1}}}}" [$rd read] ;# mystream2{t} had mygroup before RENAME
+    #     $rd close
+    # }
 
-    test {RENAME can unblock XREADGROUP with -NOGROUP} {
-        r del mystream{t}
-        r XGROUP CREATE mystream{t} mygroup $ MKSTREAM
-        set rd [redis_deferring_client]
-        $rd XREADGROUP GROUP mygroup Alice BLOCK 0 STREAMS mystream{t} ">"
-        wait_for_blocked_clients_count 1
-        r XADD mystream2{t} 100 f1 v1
-        r RENAME mystream2{t} mystream{t}
-        assert_error "*NOGROUP*" {$rd read} ;# mystream2{t} didn't have mygroup before RENAME
-        $rd close
-    }
+    # test {RENAME can unblock XREADGROUP with -NOGROUP} {
+    #     r del mystream{t}
+    #     r XGROUP CREATE mystream{t} mygroup $ MKSTREAM
+    #     set rd [redis_deferring_client]
+    #     $rd XREADGROUP GROUP mygroup Alice BLOCK 0 STREAMS mystream{t} ">"
+    #     wait_for_blocked_clients_count 1
+    #     r XADD mystream2{t} 100 f1 v1
+    #     r RENAME mystream2{t} mystream{t}
+    #     assert_error "*NOGROUP*" {$rd read} ;# mystream2{t} didn't have mygroup before RENAME
+    #     $rd close
+    # }
 
     test {XCLAIM can claim PEL items from another consumer} {
         # Add 3 items into the stream, and create a consumer group

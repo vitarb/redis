@@ -1756,7 +1756,7 @@ void zaddGenericCommand(client *c, int flags) {
         } else {
             zobj = createZsetListpackObject();
         }
-        dbAdd(c->db,key,zobj);
+        zobj = dbAdd(c->db,key,zobj);
     }
 
     for (j = 0; j < elements; j++) {
@@ -2773,7 +2773,8 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
     if (dstkey) {
         if (dstzset->zsl->length) {
             zsetConvertToListpackIfNeeded(dstobj, maxelelen, totelelen);
-            setKey(c, c->db, dstkey, dstobj, 0);
+            dstobj = setKey(c, c->db, dstkey, dstobj, 0);
+            dstzset = dstobj->ptr;
             addReplyLongLong(c, zsetLength(dstobj));
             notifyKeyspaceEvent(NOTIFY_ZSET,
                                 (op == SET_OP_UNION) ? "zunionstore" :
@@ -2809,7 +2810,6 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
             zn = zn->level[0].forward;
         }
     }
-    decrRefCount(dstobj);
     zfree(src);
 }
 
@@ -2986,7 +2986,7 @@ static void zrangeResultEmitLongLongForStore(zrange_result_handler *handler,
 static void zrangeResultFinalizeStore(zrange_result_handler *handler, size_t result_count)
 {
     if (result_count) {
-        setKey(handler->client, handler->client->db, handler->dstkey, handler->dstobj, 0);
+        handler->dstobj = setKey(handler->client, handler->client->db, handler->dstkey, handler->dstobj, 0);
         addReplyLongLong(handler->client, result_count);
         notifyKeyspaceEvent(NOTIFY_ZSET, "zrangestore", handler->dstkey, handler->client->db->id);
         server.dirty++;
@@ -2998,7 +2998,6 @@ static void zrangeResultFinalizeStore(zrange_result_handler *handler, size_t res
             server.dirty++;
         }
     }
-    decrRefCount(handler->dstobj);
 }
 
 /* Initialize the consumer interface type with the requested type. */

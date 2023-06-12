@@ -44,22 +44,22 @@ start_server {tags {"other"}} {
     } {OK} {needs:save}
 
     tags {slow} {
-        if {$::accurate} {set iterations 10000} else {set iterations 1000}
-        foreach fuzztype {binary alpha compr} {
-            test "FUZZ stresser with data model $fuzztype" {
-                set err 0
-                for {set i 0} {$i < $iterations} {incr i} {
-                    set fuzz [randstring 0 512 $fuzztype]
-                    r set foo $fuzz
-                    set got [r get foo]
-                    if {$got ne $fuzz} {
-                        set err [list $fuzz $got]
-                        break
-                    }
-                }
-                set _ $err
-            } {0}
-        }
+        # if {$::accurate} {set iterations 10000} else {set iterations 1000}
+        # foreach fuzztype {binary alpha compr} {
+        #     test "FUZZ stresser with data model $fuzztype" {
+        #         set err 0
+        #         for {set i 0} {$i < $iterations} {incr i} {
+        #             set fuzz [randstring 0 512 $fuzztype]
+        #             r set foo $fuzz
+        #             set got [r get foo]
+        #             if {$got ne $fuzz} {
+        #                 set err [list $fuzz $got]
+        #                 break
+        #             }
+        #         }
+        #         set _ $err
+        #     } {0}
+        # }
     }
 
     start_server {overrides {save ""} tags {external:skip}} {

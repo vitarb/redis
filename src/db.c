@@ -226,25 +226,31 @@ robj *lookupKeyWriteOrReply(client *c, robj *key, robj *reply) {
  * counter of the value if needed.
  *
  * The program is aborted if the key already exists. */
-void dbAdd(redisDb *db, robj *key, robj *val) {
+robj *dbAdd(redisDb *db, robj *key, robj *val) {
     int slot = getKeySlot(key->ptr);
     dict *d = db->dict[slot];
     dictEntry *de = dictAddWithValue(d, key->ptr, val);
     serverAssert(de != NULL);
     void *saved_key = dictGetKey(de);
+    robj *saved_val = (robj*)dictGetVal(de);
     serverAssert(d->type->keyCompare(d, key->ptr, saved_key));
     if (val->type == OBJ_STRING && val->encoding == OBJ_ENCODING_RAW) { // FIXME remove these safety assertions once the branch is stable
-        robj *saved_val = (robj*)dictGetVal(de);
         serverAssert(saved_val != NULL);
         serverAssert(saved_val->ptr != NULL);
         serverAssert(d->type->keyCompare(d, val->ptr, saved_val->ptr));
+    }
+    if (val->type == OBJ_STRING && val->encoding == OBJ_ENCODING_INT) {
+        // do nothing for shared objects        
+    } else {
+        decrRefCount(val);
     }
 
     serverAssertWithInfo(NULL,key,dictFind(db->dict[getKeySlot(key->ptr)], key->ptr) != NULL);
     db->key_count++;
     cumulativeKeyCountAdd(db, slot, 1);
-    signalKeyAsReady(db, key, val->type);
+    signalKeyAsReady(db, key, saved_val->type);
     notifyKeyspaceEvent(NOTIFY_NEW,"new",key,db->id);
+    return saved_val;
 }
 
 /* Returns key's hash slot when cluster mode is enabled, or 0 when disabled.
@@ -297,7 +303,7 @@ int dbAddRDBLoad(redisDb *db, sds key, robj *val) {
  * update of a value of an existing key (when false).
  *
  * The program is aborted if the key was not already present. */
-static void dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
+static robj *dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     dict *d = db->dict[getKeySlot(key->ptr)];
     dictEntry *de = dictFind(d, key->ptr);
 
@@ -320,8 +326,13 @@ static void dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
-    dictSetVal(d, de, val);
-
+    de = dictSetVal(d, de, val);
+    robj *saved_val = dictGetVal(de);
+    if (val->type == OBJ_STRING && val->encoding == OBJ_ENCODING_INT) {
+        // do nothing for shared objects        
+    } else {
+        decrRefCount(val);
+    }
     /* old embedded entry is already cleaned up */
     // if (server.lazyfree_lazy_server_del) {
     //     freeObjAsync(key,old,db->id);
@@ -329,7 +340,7 @@ static void dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     //     /* This is just decrRefCount(old); */
     //     d->type->valDestructor(d, old);
     // } 
-    
+    return saved_val;
 }
 
 /* Replace an existing key with a new value, we just replace value and don't
@@ -351,7 +362,7 @@ void dbReplaceValue(redisDb *db, robj *key, robj *val) {
  * All the new keys in the database should be created via this interface.
  * The client 'c' argument may be set to NULL if the operation is performed
  * in a context where there is no clear client performing the operation. */
-void setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
+robj *setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
     int keyfound = 0;
 
     if (flags & SETKEY_ALREADY_EXIST)
@@ -359,13 +370,15 @@ void setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
     else if (!(flags & SETKEY_DOESNT_EXIST))
         keyfound = (lookupKeyWrite(db,key) != NULL);
 
+    robj *new_val;
     if (!keyfound) {
-        dbAdd(db,key,val);
+        new_val = dbAdd(db,key,val);
     } else {
-        dbSetValue(db,key,val,1);
+        new_val = dbSetValue(db,key,val,1);
     }
     if (!(flags & SETKEY_KEEPTTL)) removeExpire(db,key);
     if (!(flags & SETKEY_NO_SIGNAL)) signalModifiedKey(c,db,key);
+    return new_val;
 }
 
 /* Return a random key, in form of a Redis object.
@@ -1364,7 +1377,7 @@ void renameGenericCommand(client *c, int nx) {
          * with the same name. */
         dbDelete(c->db,c->argv[2]);
     }
-    dbAdd(c->db,c->argv[2],o);
+    o = dbAdd(c->db,c->argv[2],o);
     if (expire != -1) setExpire(c,c->db,c->argv[2],expire);
     dbDelete(c->db,c->argv[1]);
     signalModifiedKey(c,c->db,c->argv[1]);
@@ -1430,7 +1443,7 @@ void moveCommand(client *c) {
         addReply(c,shared.czero);
         return;
     }
-    dbAdd(dst,c->argv[1],o);
+    o = dbAdd(dst,c->argv[1],o);
     if (expire != -1) setExpire(c,dst,c->argv[1],expire);
     incrRefCount(o);
 
@@ -1538,7 +1551,7 @@ void copyCommand(client *c) {
         dbDelete(dst,newkey);
     }
 
-    dbAdd(dst,newkey,newobj);
+    newobj = dbAdd(dst,newkey,newobj);
     if (expire != -1) setExpire(c, dst, newkey, expire);
 
     /* OK! key copied */

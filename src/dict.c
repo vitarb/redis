@@ -795,17 +795,18 @@ void dictSetKey(dict *d, dictEntry* de, void *key) {
         de->key = key;
 }
 
-void dictSetVal(dict *d, dictEntry *de, void *val) {
+dictEntry *dictSetVal(dict *d, dictEntry *de, void *val) {
     assert(entryHasValue(de));
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
     if (entryIsEmbedded(de)) {
         void *key = dictGetKey(de);
         dictEntry *unlinked = dictUnlink(d, key);
-        dictAddWithValue(d, key, val);
+        de = dictAddWithValue(d, key, val);
         dictFreeUnlinkedEntry(d, unlinked);
     } else {
         de->v.val = v;
     }
+    return de;
 }
 
 void dictSetSignedIntegerVal(dictEntry *de, int64_t val) {

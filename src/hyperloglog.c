@@ -1199,7 +1199,7 @@ void pfaddCommand(client *c) {
          * hold our HLL data structure. sdsnewlen() when NULL is passed
          * is guaranteed to return bytes initialized to zero. */
         o = createHLLObject();
-        dbAdd(c->db,c->argv[1],o);
+        o = dbAdd(c->db,c->argv[1],o);
         updated++;
     } else {
         if (isHLLObjectOrReply(c,o) != C_OK) return;
@@ -1361,7 +1361,7 @@ void pfmergeCommand(client *c) {
          * hold our HLL data structure. sdsnewlen() when NULL is passed
          * is guaranteed to return bytes initialized to zero. */
         o = createHLLObject();
-        dbAdd(c->db,c->argv[1],o);
+        o = dbAdd(c->db,c->argv[1],o);
     } else {
         /* If key exists we are sure it's of the right type/size
          * since we checked when merging the different HLLs, so we

@@ -583,7 +583,7 @@ void sortCommandGeneric(client *c, int readonly) {
         }
         if (outputlen) {
             listTypeTryConversion(sobj,LIST_CONV_AUTO,NULL,NULL);
-            setKey(c,c->db,storekey,sobj,0);
+            sobj = setKey(c,c->db,storekey,sobj,0);
             notifyKeyspaceEvent(NOTIFY_LIST,"sortstore",storekey,
                                 c->db->id);
             server.dirty += outputlen;
@@ -592,7 +592,6 @@ void sortCommandGeneric(client *c, int readonly) {
             notifyKeyspaceEvent(NOTIFY_GENERIC,"del",storekey,c->db->id);
             server.dirty++;
         }
-        decrRefCount(sobj);
         addReplyLongLong(c,outputlen);
     }
 

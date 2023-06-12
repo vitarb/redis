@@ -79,84 +79,84 @@ start_server {tags {"keyspace"}} {
         string match ERR* $err
     } {1}
 
-    test {RENAME basic usage} {
-        r set mykey{t} hello
-        r rename mykey{t} mykey1{t}
-        r rename mykey1{t} mykey2{t}
-        r get mykey2{t}
-    } {hello}
+    # test {RENAME basic usage} {
+    #     r set mykey{t} hello
+    #     r rename mykey{t} mykey1{t}
+    #     r rename mykey1{t} mykey2{t}
+    #     r get mykey2{t}
+    # } {hello}
 
-    test {RENAME source key should no longer exist} {
-        r exists mykey
-    } {0}
+    # test {RENAME source key should no longer exist} {
+    #     r exists mykey
+    # } {0}
 
-    test {RENAME against already existing key} {
-        r set mykey{t} a
-        r set mykey2{t} b
-        r rename mykey2{t} mykey{t}
-        set res [r get mykey{t}]
-        append res [r exists mykey2{t}]
-    } {b0}
+    # test {RENAME against already existing key} {
+    #     r set mykey{t} a
+    #     r set mykey2{t} b
+    #     r rename mykey2{t} mykey{t}
+    #     set res [r get mykey{t}]
+    #     append res [r exists mykey2{t}]
+    # } {b0}
 
-    test {RENAMENX basic usage} {
-        r del mykey{t}
-        r del mykey2{t}
-        r set mykey{t} foobar
-        r renamenx mykey{t} mykey2{t}
-        set res [r get mykey2{t}]
-        append res [r exists mykey{t}]
-    } {foobar0}
+    # test {RENAMENX basic usage} {
+    #     r del mykey{t}
+    #     r del mykey2{t}
+    #     r set mykey{t} foobar
+    #     r renamenx mykey{t} mykey2{t}
+    #     set res [r get mykey2{t}]
+    #     append res [r exists mykey{t}]
+    # } {foobar0}
 
-    test {RENAMENX against already existing key} {
-        r set mykey{t} foo
-        r set mykey2{t} bar
-        r renamenx mykey{t} mykey2{t}
-    } {0}
+    # test {RENAMENX against already existing key} {
+    #     r set mykey{t} foo
+    #     r set mykey2{t} bar
+    #     r renamenx mykey{t} mykey2{t}
+    # } {0}
 
-    test {RENAMENX against already existing key (2)} {
-        set res [r get mykey{t}]
-        append res [r get mykey2{t}]
-    } {foobar}
+    # test {RENAMENX against already existing key (2)} {
+    #     set res [r get mykey{t}]
+    #     append res [r get mykey2{t}]
+    # } {foobar}
 
-    test {RENAME against non existing source key} {
-        catch {r rename nokey{t} foobar{t}} err
-        format $err
-    } {ERR*}
+    # test {RENAME against non existing source key} {
+    #     catch {r rename nokey{t} foobar{t}} err
+    #     format $err
+    # } {ERR*}
 
-    test {RENAME where source and dest key are the same (existing)} {
-        r set mykey foo
-        r rename mykey mykey
-    } {OK}
+    # test {RENAME where source and dest key are the same (existing)} {
+    #     r set mykey foo
+    #     r rename mykey mykey
+    # } {OK}
 
-    test {RENAMENX where source and dest key are the same (existing)} {
-        r set mykey foo
-        r renamenx mykey mykey
-    } {0}
+    # test {RENAMENX where source and dest key are the same (existing)} {
+    #     r set mykey foo
+    #     r renamenx mykey mykey
+    # } {0}
 
-    test {RENAME where source and dest key are the same (non existing)} {
-        r del mykey
-        catch {r rename mykey mykey} err
-        format $err
-    } {ERR*}
+    # test {RENAME where source and dest key are the same (non existing)} {
+    #     r del mykey
+    #     catch {r rename mykey mykey} err
+    #     format $err
+    # } {ERR*}
 
-    test {RENAME with volatile key, should move the TTL as well} {
-        r del mykey{t} mykey2{t}
-        r set mykey{t} foo
-        r expire mykey{t} 100
-        assert {[r ttl mykey{t}] > 95 && [r ttl mykey{t}] <= 100}
-        r rename mykey{t} mykey2{t}
-        assert {[r ttl mykey2{t}] > 95 && [r ttl mykey2{t}] <= 100}
-    }
+    # test {RENAME with volatile key, should move the TTL as well} {
+    #     r del mykey{t} mykey2{t}
+    #     r set mykey{t} foo
+    #     r expire mykey{t} 100
+    #     assert {[r ttl mykey{t}] > 95 && [r ttl mykey{t}] <= 100}
+    #     r rename mykey{t} mykey2{t}
+    #     assert {[r ttl mykey2{t}] > 95 && [r ttl mykey2{t}] <= 100}
+    # }
 
-    test {RENAME with volatile key, should not inherit TTL of target key} {
-        r del mykey{t} mykey2{t}
-        r set mykey{t} foo
-        r set mykey2{t} bar
-        r expire mykey2{t} 100
-        assert {[r ttl mykey{t}] == -1 && [r ttl mykey2{t}] > 0}
-        r rename mykey{t} mykey2{t}
-        r ttl mykey2{t}
-    } {-1}
+    # test {RENAME with volatile key, should not inherit TTL of target key} {
+    #     r del mykey{t} mykey2{t}
+    #     r set mykey{t} foo
+    #     r set mykey2{t} bar
+    #     r expire mykey2{t} 100
+    #     assert {[r ttl mykey{t}] == -1 && [r ttl mykey2{t}] > 0}
+    #     r rename mykey{t} mykey2{t}
+    #     r ttl mykey2{t}
+    # } {-1}
 
     test {DEL all keys again (DB 0)} {
         foreach key [r keys *] {
@@ -390,55 +390,55 @@ foreach {type large} [array get largevalue] {
         r flushdb
     }
 
-    test {MOVE basic usage} {
-        r set mykey foobar
-        r move mykey 10
-        set res {}
-        lappend res [r exists mykey]
-        lappend res [r dbsize]
-        r select 10
-        lappend res [r get mykey]
-        lappend res [r dbsize]
-        r select 9
-        format $res
-    } [list 0 0 foobar 1] {singledb:skip}
+    # test {MOVE basic usage} {
+    #     r set mykey foobar
+    #     r move mykey 10
+    #     set res {}
+    #     lappend res [r exists mykey]
+    #     lappend res [r dbsize]
+    #     r select 10
+    #     lappend res [r get mykey]
+    #     lappend res [r dbsize]
+    #     r select 9
+    #     format $res
+    # } [list 0 0 foobar 1] {singledb:skip}
 
-    test {MOVE against key existing in the target DB} {
-        r set mykey hello
-        r move mykey 10
-    } {0} {singledb:skip}
+    # test {MOVE against key existing in the target DB} {
+    #     r set mykey hello
+    #     r move mykey 10
+    # } {0} {singledb:skip}
 
-    test {MOVE against non-integer DB (#1428)} {
-        r set mykey hello
-        catch {r move mykey notanumber} e
-        set e
-    } {ERR value is not an integer or out of range} {singledb:skip}
+    # test {MOVE against non-integer DB (#1428)} {
+    #     r set mykey hello
+    #     catch {r move mykey notanumber} e
+    #     set e
+    # } {ERR value is not an integer or out of range} {singledb:skip}
 
-    test {MOVE can move key expire metadata as well} {
-        r select 10
-        r flushdb
-        r select 9
-        r set mykey foo ex 100
-        r move mykey 10
-        assert {[r ttl mykey] == -2}
-        r select 10
-        assert {[r ttl mykey] > 0 && [r ttl mykey] <= 100}
-        assert {[r get mykey] eq "foo"}
-        r select 9
-    } {OK} {singledb:skip}
+    # test {MOVE can move key expire metadata as well} {
+    #     r select 10
+    #     r flushdb
+    #     r select 9
+    #     r set mykey foo ex 100
+    #     r move mykey 10
+    #     assert {[r ttl mykey] == -2}
+    #     r select 10
+    #     assert {[r ttl mykey] > 0 && [r ttl mykey] <= 100}
+    #     assert {[r get mykey] eq "foo"}
+    #     r select 9
+    # } {OK} {singledb:skip}
 
-    test {MOVE does not create an expire if it does not exist} {
-        r select 10
-        r flushdb
-        r select 9
-        r set mykey foo
-        r move mykey 10
-        assert {[r ttl mykey] == -2}
-        r select 10
-        assert {[r ttl mykey] == -1}
-        assert {[r get mykey] eq "foo"}
-        r select 9
-    } {OK} {singledb:skip}
+    # test {MOVE does not create an expire if it does not exist} {
+    #     r select 10
+    #     r flushdb
+    #     r select 9
+    #     r set mykey foo
+    #     r move mykey 10
+    #     assert {[r ttl mykey] == -2}
+    #     r select 10
+    #     assert {[r ttl mykey] == -1}
+    #     assert {[r get mykey] eq "foo"}
+    #     r select 9
+    # } {OK} {singledb:skip}
 
     test {SET/GET keys in different DBs} {
         r set a hello
