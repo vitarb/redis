@@ -232,16 +232,7 @@ void dbAdd(redisDb *db, robj *key, robj **addr_val) {
     dict *d = db->dict[slot];
     dictEntry *de = dictAddWithValue(d, key->ptr, val);
     serverAssert(de != NULL);
-    void *saved_key = dictGetKey(de);
-    serverAssert(d->type->keyCompare(d, key->ptr, saved_key));
-    if (val->type == OBJ_STRING && val->encoding == OBJ_ENCODING_RAW) { // FIXME remove these safety assertions once the branch is stable
-        robj *saved_val = (robj*)dictGetVal(de);
-        serverAssert(saved_val != NULL);
-        serverAssert(saved_val->ptr != NULL);
-        serverAssert(d->type->keyCompare(d, val->ptr, saved_val->ptr));
-    }
-    (*addr_val)->ptr = NULL;
-    zfree(*addr_val);
+    if (val->refcount != OBJ_SHARED_REFCOUNT) zfree(*addr_val);
     val = dictGetVal(de);
     *addr_val = val;
 
@@ -326,11 +317,9 @@ static void dbSetValue(redisDb *db, robj *key, robj **addr_val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
-    robj *old_val = val;
     dictSetVal(d, &de, val);
+    if (val->refcount != OBJ_SHARED_REFCOUNT) zfree(*addr_val);
     *addr_val = dictGetVal(de);
-    old_val->ptr = NULL;
-    zfree(old_val);
     /* old embedded entry is already cleaned up */
     // if (server.lazyfree_lazy_server_del) {
     //     freeObjAsync(key,old,db->id);
