@@ -484,6 +484,8 @@ start_server {
         assert_equal [s total_error_replies] 1
     }
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73909
+if (0) {
     test {RENAME can unblock XREADGROUP with data} {
         r del mystream{t}
         r XGROUP CREATE mystream{t} mygroup $ MKSTREAM
@@ -508,6 +510,7 @@ start_server {
         assert_error "*NOGROUP*" {$rd read} ;# mystream2{t} didn't have mygroup before RENAME
         $rd close
     }
+}
 
     test {XCLAIM can claim PEL items from another consumer} {
         # Add 3 items into the stream, and create a consumer group

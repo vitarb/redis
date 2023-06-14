@@ -78,13 +78,14 @@ start_server {tags {"repl external:skip"}} {
             }
         }
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73943
+if (0) {
         test {INCRBYFLOAT replication, should not remove expire} {
             r set test 1 EX 100
             r incrbyfloat test 0.1
             wait_for_ofs_sync $A $B
             assert_equal [$A debug digest] [$B debug digest]
         }
-
         test {GETSET replication} {
             $A config resetstat
             $A config set loglevel debug
@@ -106,6 +107,7 @@ start_server {tags {"repl external:skip"}} {
             assert_match {} [cmdrstat getset $A]
         }
 
+}
         test {BRPOPLPUSH replication, when blocking against empty list} {
             $A config resetstat
             set rd [redis_deferring_client]

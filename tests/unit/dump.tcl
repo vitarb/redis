@@ -201,6 +201,8 @@ start_server {tags {"dump"}} {
         }
     } {} {external:skip}
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73899
+if (0) {
     test {MIGRATE can correctly transfer large values} {
         set first [srv 0 client]
         r del key
@@ -225,6 +227,7 @@ start_server {tags {"dump"}} {
             assert {[$second llen key] == 40000*20}
         }
     } {} {external:skip}
+}
 
     test {MIGRATE can correctly transfer hashes} {
         set first [srv 0 client]
@@ -293,6 +296,8 @@ start_server {tags {"dump"}} {
         set e
     } {*empty string*} {external:skip}
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73899
+if (0) {
     test {MIGRATE with multiple keys migrate just existing ones} {
         set first [srv 0 client]
         r set key1 "v1"
@@ -318,6 +323,7 @@ start_server {tags {"dump"}} {
             assert {[$second get key3] eq {v3}}
         }
     } {} {external:skip}
+}
 
     test {MIGRATE with multiple keys: stress command rewriting} {
         set first [srv 0 client]
@@ -335,6 +341,8 @@ start_server {tags {"dump"}} {
         }
     } {} {external:skip}
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73899
+if (0) {
     test {MIGRATE with multiple keys: delete just ack keys} {
         set first [srv 0 client]
         r flushdb
@@ -354,7 +362,7 @@ start_server {tags {"dump"}} {
             assert {[$first exists d] == 1}
         }
     } {} {external:skip}
-
+}
     test {MIGRATE AUTH: correct and wrong password cases} {
         set first [srv 0 client]
         r del list

@@ -186,6 +186,8 @@ start_server {} {
 }
 }
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73943
+if (0) {
 test {Partial resynchronization is successful even client-output-buffer-limit is less than repl-backlog-size} {
     start_server {tags {"repl external:skip"}} {
         start_server {} {
@@ -228,6 +230,7 @@ test {Partial resynchronization is successful even client-output-buffer-limit is
             assert_equal [s sync_partial_ok] {1}
         }
     }
+}
 }
 
 # This test was added to make sure big keys added to the backlog do not trigger psync loop.

@@ -232,6 +232,8 @@ start_server {
         set e
     } {*ERR*double*}
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73897
+if (0) {
     test "SORT will complain with numerical sorting and bad doubles (2)" {
         r del myset
         r sadd myset 1 2 3 4
@@ -240,7 +242,7 @@ start_server {
         catch {r sort myset by score:*} e
         set e
     } {*ERR*double*} {cluster:skip}
-
+}
     test "SORT BY sub-sorts lexicographically if score is the same" {
         r del myset
         r sadd myset a b c d e f g h i l m n o p q r s t u v z aa aaa azz

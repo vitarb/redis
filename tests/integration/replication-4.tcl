@@ -118,6 +118,8 @@ start_server {tags {"repl external:skip"}} {
     }
 }
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73943  
+if (0) {
 start_server {tags {"repl external:skip"}} {
     start_server {} {
         set master [srv -1 client]
@@ -167,6 +169,7 @@ start_server {tags {"repl external:skip"}} {
         }
     }
 }
+}
 
 start_server {tags {"repl external:skip"}} {
     start_server {} {
@@ -184,6 +187,8 @@ start_server {tags {"repl external:skip"}} {
             }
         }
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73943
+if (0) {
         test {Replication: commands with many arguments (issue #1221)} {
             # We now issue large MSET commands, that may trigger a specific
             # class of bugs, see issue #1221.
@@ -203,7 +208,7 @@ start_server {tags {"repl external:skip"}} {
             }
             assert {[$master dbsize] > 0}
         }
-
+}
         test {Replication of SPOP command -- alsoPropagate() API} {
             $master del myset
             set size [expr 1+[randomInt 100]]

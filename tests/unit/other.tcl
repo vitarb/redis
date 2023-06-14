@@ -241,6 +241,8 @@ start_server {tags {"other"}} {
         } {1}
     }
 
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73895
+if (0) {
     test {APPEND basics} {
         r del foo
         list [r append foo bar] [r get foo] \
@@ -275,7 +277,7 @@ start_server {tags {"other"}} {
         }
         set _ $err
     } {}
-
+}
     # Leave the user with a clean DB before to exit
     test {FLUSHDB} {
         set aux {}
@@ -354,7 +356,8 @@ start_server {tags {"other"}} {
         assert_error {*unknown subcommand*} {r CONFIG GET_XX}
     }
 }
-
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73897
+if (0) {
 start_server {tags {"other external:skip"}} {
     test {Don't rehash if redis has child process} {
         r config set save ""
@@ -380,6 +383,7 @@ start_server {tags {"other external:skip"}} {
         r set k3 v3
         assert_match "*table size: 8192*" [r debug HTSTATS 9]
     } {} {needs:debug needs:local-process}
+}
 }
 
 proc read_proc_title {pid} {

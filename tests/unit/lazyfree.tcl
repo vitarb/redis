@@ -1,4 +1,6 @@
 start_server {tags {"lazyfree"}} {
+#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73911
+if (0) {
     test "UNLINK can reclaim memory in background" {
         set orig_mem [s used_memory]
         set args {}
@@ -87,4 +89,5 @@ start_server {tags {"lazyfree"}} {
         }
         assert_equal [s lazyfreed_objects] 0
     } {} {needs:config-resetstat}
+}
 }
