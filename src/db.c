@@ -332,8 +332,8 @@ static void dbSetValue(redisDb *db, robj *key, robj **addr_val, int overwrite) {
 
 /* Replace an existing key with a new value, we just replace value and don't
  * emit any events */
-void dbReplaceValue(redisDb *db, robj *key, robj *val) {
-    dbSetValue(db, key, &val, 0);
+void dbReplaceValue(redisDb *db, robj *key, robj **val) {
+    dbSetValue(db, key, val, 0);
 }
 
 /* High level Set operation. This function can be used in order to set
@@ -558,7 +558,7 @@ robj *dbUnshareStringValue(redisDb *db, robj *key, robj *o) {
         robj *decoded = getDecodedObject(o);
         o = createRawStringObject(decoded->ptr, sdslen(decoded->ptr));
         decrRefCount(decoded);
-        dbReplaceValue(db,key,o);
+        dbReplaceValue(db,key,&o);
     }
     return o;
 }

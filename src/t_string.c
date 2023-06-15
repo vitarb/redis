@@ -619,7 +619,7 @@ void incrDecrCommand(client *c, long long incr) {
     } else {
         new = createStringObjectFromLongLongForValue(value);
         if (o) {
-            dbReplaceValue(c->db,c->argv[1],new);
+            dbReplaceValue(c->db,c->argv[1],&new);
         } else {
             dbAdd(c->db,c->argv[1],&new);
         }
@@ -674,7 +674,7 @@ void incrbyfloatCommand(client *c) {
     }
     new = createStringObjectFromLongDouble(value,1);
     if (o)
-        dbReplaceValue(c->db,c->argv[1],new);
+        dbReplaceValue(c->db,c->argv[1],&new);
     else
         dbAdd(c->db,c->argv[1],&new);
     signalModifiedKey(c,c->db,c->argv[1]);
