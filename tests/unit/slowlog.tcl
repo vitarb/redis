@@ -84,8 +84,7 @@ start_server {tags {"slowlog"} overrides {slowlog-log-slower-than 1000000}} {
         assert_match {* key 9 5000 AUTH (redacted)} [lindex [lindex $slowlog_resp 1] 3]
         assert_match {* key 9 5000 AUTH2 (redacted) (redacted)} [lindex [lindex $slowlog_resp 0] 3]
     } {} {needs:repl}
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73896
-if (0) {
+
     test {SLOWLOG - Rewritten commands are logged as their original command} {
         r config set slowlog-log-slower-than 0
 
@@ -132,7 +131,6 @@ if (0) {
         $rd close
         assert_equal {blpop l 0} [lindex [lindex [r slowlog get] 0] 3]
     }
-}
 
     test {SLOWLOG - commands with too many arguments are trimmed} {
         r config set slowlog-log-slower-than 0
