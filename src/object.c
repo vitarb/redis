@@ -403,6 +403,9 @@ void decrRefCount(robj *o) {
     }
 }
 
+/* Used in the destructor for embedded values.
+ * Similar to decrRefCount, but does not delete the robj, only what it references.
+ * robject itself will be deleted together with the embedded entry. */
 void decrRefCountNoFree(robj *o) {
     if (o->refcount == 1) {
         switch(o->type) {

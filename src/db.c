@@ -226,20 +226,17 @@ robj *lookupKeyWriteOrReply(client *c, robj *key, robj *reply) {
  * counter of the value if needed.
  *
  * The program is aborted if the key already exists. */
-void dbAdd(redisDb *db, robj *key, robj **addr_val) {
-    robj *val = *addr_val;
+void dbAdd(redisDb *db, robj *key, robj **val) {
     int slot = getKeySlot(key->ptr);
     dict *d = db->dict[slot];
-    dictEntry *de = dictAddWithValue(d, key->ptr, val);
+    dictEntry *de = dictAddWithValue(d, key->ptr, *val);
     serverAssert(de != NULL);
-    if (val->refcount != OBJ_SHARED_REFCOUNT) zfree(*addr_val);
-    val = dictGetVal(de);
-    *addr_val = val;
-
-    serverAssertWithInfo(NULL,key,dictFind(db->dict[getKeySlot(key->ptr)], key->ptr) != NULL);
+    if ((*val)->refcount == 1) zfree(*val); else
+        serverAssert((*val)->refcount == OBJ_SHARED_REFCOUNT);
+    *val = dictGetVal(de);
     db->key_count++;
     cumulativeKeyCountAdd(db, slot, 1);
-    signalKeyAsReady(db, key, val->type);
+    signalKeyAsReady(db, key, (*val)->type);
     notifyKeyspaceEvent(NOTIFY_NEW,"new",key,db->id);
 }
 
@@ -293,15 +290,14 @@ int dbAddRDBLoad(redisDb *db, sds key, robj *val) {
  * update of a value of an existing key (when false).
  *
  * The program is aborted if the key was not already present. */
-static void dbSetValue(redisDb *db, robj *key, robj **addr_val, int overwrite) {
-    robj *val = (*addr_val);
+static void dbSetValue(redisDb *db, robj *key, robj **val, int overwrite) {
     dict *d = db->dict[getKeySlot(key->ptr)];
     dictEntry *de = dictFind(d, key->ptr);
 
     serverAssertWithInfo(NULL,key,de != NULL);
     robj *old = dictGetVal(de);
     if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
-        val->lru = old->lru;
+        (*val)->lru = old->lru;
     }
     if (overwrite) {
         /* RM_StringDMA may call dbUnshareStringValue which may free val, so we
@@ -317,9 +313,11 @@ static void dbSetValue(redisDb *db, robj *key, robj **addr_val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
-    dictSetVal(d, &de, val);
-    if (val->refcount != OBJ_SHARED_REFCOUNT) zfree(*addr_val);
-    *addr_val = dictGetVal(de);
+    dictSetVal(d, &de, *val);
+    if ((*val)->refcount == 1) zfree(*val); else
+        serverAssert((*val)->refcount == OBJ_SHARED_REFCOUNT);
+    *val = dictGetVal(de);
+    // FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73911
     /* old embedded entry is already cleaned up */
     // if (server.lazyfree_lazy_server_del) {
     //     freeObjAsync(key,old,db->id);
