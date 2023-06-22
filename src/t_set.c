@@ -611,7 +611,7 @@ void saddCommand(client *c) {
     
     if (set == NULL) {
         set = setTypeCreate(c->argv[2]->ptr, c->argc - 2);
-        dbAdd(c->db,c->argv[1],&set);
+        dbAdd(c->db,c->argv[1],set);
     } else {
         setTypeMaybeConvert(set, c->argc - 2);
     }
@@ -695,7 +695,7 @@ void smoveCommand(client *c) {
     /* Create the destination set when it doesn't exist */
     if (!dstset) {
         dstset = setTypeCreate(ele->ptr, 1);
-        dbAdd(c->db,c->argv[2],&dstset);
+        dbAdd(c->db,c->argv[2],dstset);
     }
 
     signalModifiedKey(c,c->db,c->argv[1]);
@@ -932,7 +932,7 @@ void spopWithCountCommand(client *c) {
         setTypeReleaseIterator(si);
 
         /* Assign the new set as the key value. */
-        dbReplaceValue(c->db,c->argv[1],&newset);
+        dbReplaceValue(c->db,c->argv[1],newset);
     }
 
     /* Don't propagate the command itself even if we incremented the
@@ -1392,7 +1392,7 @@ void sinterGenericCommand(client *c, robj **setkeys,
                  * frequent reallocs. Therefore, we shrink it now. */
                 dstset->ptr = lpShrinkToFit(dstset->ptr);
             }
-            setKey(c,c->db,dstkey,&dstset,0);
+            setKey(c,c->db,dstkey,dstset,0);
             addReplyLongLong(c,setTypeSize(dstset));
             notifyKeyspaceEvent(NOTIFY_SET,"sinterstore",
                 dstkey,c->db->id);
@@ -1604,7 +1604,7 @@ void sunionDiffGenericCommand(client *c, robj **setkeys, int setnum,
         /* If we have a target key where to store the resulting set
          * create this key with the result set inside */
         if (setTypeSize(dstset) > 0) {
-            setKey(c,c->db,dstkey,&dstset,0);
+            setKey(c,c->db,dstkey,dstset,0);
             addReplyLongLong(c,setTypeSize(dstset));
             notifyKeyspaceEvent(NOTIFY_SET,
                 op == SET_OP_UNION ? "sunionstore" : "sdiffstore",

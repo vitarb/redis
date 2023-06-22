@@ -317,7 +317,7 @@ void dictEmbeddedValueDestructor(dict *d, void *val)
 {
     UNUSED(d);
     if (val == NULL) return; /* Lazy freeing will set value to NULL. */
-    decrRefCountNoFree(val);
+    freeReferencedObject(val);
 }
 
 void dictSdsDestructor(dict *d, void *val)

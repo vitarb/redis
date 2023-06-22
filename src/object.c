@@ -380,35 +380,25 @@ void incrRefCount(robj *o) {
             /* Nothing to do: this refcount is immutable. */
         } else if (o->refcount == OBJ_STATIC_REFCOUNT) {
             serverPanic("You tried to retain an object allocated in the stack");
+        } else if (o->refcount == OBJ_EMBEDDED_REFCOUNT) {
+            serverPanic("You tried to retain an object allocated in the embedded entry");
         }
     }
 }
 
 void decrRefCount(robj *o) {
     if (o->refcount == 1) {
-        switch(o->type) {
-        case OBJ_STRING: freeStringObject(o); break;
-        case OBJ_LIST: freeListObject(o); break;
-        case OBJ_SET: freeSetObject(o); break;
-        case OBJ_ZSET: freeZsetObject(o); break;
-        case OBJ_HASH: freeHashObject(o); break;
-        case OBJ_MODULE: freeModuleObject(o); break;
-        case OBJ_STREAM: freeStreamObject(o); break;
-        default: serverPanic("Unknown object type"); break;
-        }
+        freeReferencedObject(o);
         zfree(o);
     } else {
+        if (o->refcount == OBJ_EMBEDDED_REFCOUNT) serverPanic("decrRefCount against embedded object");
         if (o->refcount <= 0) serverPanic("decrRefCount against refcount <= 0");
         if (o->refcount != OBJ_SHARED_REFCOUNT) o->refcount--;
     }
 }
 
-/* Used in the destructor for embedded values.
- * Similar to decrRefCount, but does not delete the robj, only what it references.
- * robject itself will be deleted together with the embedded entry. */
-void decrRefCountNoFree(robj *o) {
-    if (o->refcount == 1) {
-        switch(o->type) {
+void freeReferencedObject(robj *o) {
+    switch(o->type) {
         case OBJ_STRING: freeStringObject(o); break;
         case OBJ_LIST: freeListObject(o); break;
         case OBJ_SET: freeSetObject(o); break;
@@ -416,11 +406,7 @@ void decrRefCountNoFree(robj *o) {
         case OBJ_HASH: freeHashObject(o); break;
         case OBJ_MODULE: freeModuleObject(o); break;
         case OBJ_STREAM: freeStreamObject(o); break;
-        default: serverPanic("Unknown object type"); break;
-        }
-    } else {
-        if (o->refcount <= 0) serverPanic("decrRefCount against refcount <= 0");
-        if (o->refcount != OBJ_SHARED_REFCOUNT) o->refcount--;
+        default: serverPanic("Unknown object type");
     }
 }
 

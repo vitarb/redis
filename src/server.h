@@ -895,7 +895,8 @@ struct RedisModuleDigest {
 
 #define OBJ_SHARED_REFCOUNT INT_MAX     /* Global object never destroyed. */
 #define OBJ_STATIC_REFCOUNT (INT_MAX-1) /* Object allocated in the stack. */
-#define OBJ_FIRST_SPECIAL_REFCOUNT OBJ_STATIC_REFCOUNT
+#define OBJ_EMBEDDED_REFCOUNT (INT_MAX-2) /* Object allocated inside of the dict entry. */
+#define OBJ_FIRST_SPECIAL_REFCOUNT OBJ_EMBEDDED_REFCOUNT
 struct redisObject {
     unsigned type:4;
     unsigned encoding:4;
@@ -2739,7 +2740,7 @@ void execCommandAbort(client *c, sds error);
 
 /* Redis object implementation */
 void decrRefCount(robj *o);
-void decrRefCountNoFree(robj *o);
+void freeReferencedObject(robj *o);
 void decrRefCountVoid(void *o);
 void incrRefCount(robj *o);
 robj *makeObjectShared(robj *o);
@@ -3268,15 +3269,15 @@ int objectSetLRUOrLFU(robj *val, long long lfu_freq, long long lru_idle,
 #define LOOKUP_NOEXPIRE (1<<4) /* Avoid deleting lazy expired keys. */
 #define LOOKUP_NOEFFECTS (LOOKUP_NONOTIFY | LOOKUP_NOSTATS | LOOKUP_NOTOUCH | LOOKUP_NOEXPIRE) /* Avoid any effects from fetching the key */
 
-void dbAdd(redisDb *db, robj *key, robj **val);
+dictEntry* dbAdd(redisDb *db, robj *key, robj *val);
 int dbAddRDBLoad(redisDb *db, sds key, robj *val);
-void dbReplaceValue(redisDb *db, robj *key, robj **val);
+dictEntry* dbReplaceValue(redisDb *db, robj *key, robj *val);
 
 #define SETKEY_KEEPTTL 1
 #define SETKEY_NO_SIGNAL 2
 #define SETKEY_ALREADY_EXIST 4
 #define SETKEY_DOESNT_EXIST 8
-void setKey(client *c, redisDb *db, robj *key, robj **val, int flags);
+dictEntry* setKey(client *c, redisDb *db, robj *key, robj *val, int flags);
 robj *dbRandomKey(redisDb *db);
 int dbGenericDelete(redisDb *db, robj *key, int async, int flags);
 int dbSyncDelete(redisDb *db, robj *key);

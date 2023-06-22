@@ -226,18 +226,16 @@ robj *lookupKeyWriteOrReply(client *c, robj *key, robj *reply) {
  * counter of the value if needed.
  *
  * The program is aborted if the key already exists. */
-void dbAdd(redisDb *db, robj *key, robj **val) {
+dictEntry* dbAdd(redisDb *db, robj *key, robj *val) {
     int slot = getKeySlot(key->ptr);
     dict *d = db->dict[slot];
-    dictEntry *de = dictAddWithValue(d, key->ptr, *val);
+    dictEntry *de = dictAddWithValue(d, key->ptr, val);
     serverAssert(de != NULL);
-    if ((*val)->refcount == 1) zfree(*val); else
-        serverAssert((*val)->refcount == OBJ_SHARED_REFCOUNT);
-    *val = dictGetVal(de);
     db->key_count++;
     cumulativeKeyCountAdd(db, slot, 1);
-    signalKeyAsReady(db, key, (*val)->type);
+    signalKeyAsReady(db, key, val->type);
     notifyKeyspaceEvent(NOTIFY_NEW,"new",key,db->id);
+    return de;
 }
 
 /* Returns key's hash slot when cluster mode is enabled, or 0 when disabled.
@@ -290,14 +288,14 @@ int dbAddRDBLoad(redisDb *db, sds key, robj *val) {
  * update of a value of an existing key (when false).
  *
  * The program is aborted if the key was not already present. */
-static void dbSetValue(redisDb *db, robj *key, robj **val, int overwrite) {
+static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     dict *d = db->dict[getKeySlot(key->ptr)];
     dictEntry *de = dictFind(d, key->ptr);
 
     serverAssertWithInfo(NULL,key,de != NULL);
     robj *old = dictGetVal(de);
     if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
-        (*val)->lru = old->lru;
+        val->lru = old->lru;
     }
     if (overwrite) {
         /* RM_StringDMA may call dbUnshareStringValue which may free val, so we
@@ -313,10 +311,8 @@ static void dbSetValue(redisDb *db, robj *key, robj **val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
-    dictSetVal(d, &de, *val);
-    if ((*val)->refcount == 1) zfree(*val); else
-        serverAssert((*val)->refcount == OBJ_SHARED_REFCOUNT);
-    *val = dictGetVal(de);
+    dictSetVal(d, &de, val);
+    return de;
     // FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73911
     /* old embedded entry is already cleaned up */
     // if (server.lazyfree_lazy_server_del) {
@@ -330,7 +326,7 @@ static void dbSetValue(redisDb *db, robj *key, robj **val, int overwrite) {
 
 /* Replace an existing key with a new value, we just replace value and don't
  * emit any events */
-void dbReplaceValue(redisDb *db, robj *key, robj **val) {
+dictEntry* dbReplaceValue(redisDb *db, robj *key, robj *val) {
     dbSetValue(db, key, val, 0);
 }
 
@@ -347,7 +343,7 @@ void dbReplaceValue(redisDb *db, robj *key, robj **val) {
  * All the new keys in the database should be created via this interface.
  * The client 'c' argument may be set to NULL if the operation is performed
  * in a context where there is no clear client performing the operation. */
-void setKey(client *c, redisDb *db, robj *key, robj **val, int flags) {
+dictEntry* setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
     int keyfound = 0;
 
     if (flags & SETKEY_ALREADY_EXIST)
@@ -556,7 +552,9 @@ robj *dbUnshareStringValue(redisDb *db, robj *key, robj *o) {
         robj *decoded = getDecodedObject(o);
         o = createRawStringObject(decoded->ptr, sdslen(decoded->ptr));
         decrRefCount(decoded);
-        dbReplaceValue(db,key,&o);
+        dictEntry *de = dbReplaceValue(db,key,o);
+        // FIXME (value embedding) o is leaked here, fix it by refactoring code that calls this function or allocate it on stack.
+        return dictGetVal(de);
     }
     return o;
 }
@@ -1360,7 +1358,7 @@ void renameGenericCommand(client *c, int nx) {
          * with the same name. */
         dbDelete(c->db,c->argv[2]);
     }
-    dbAdd(c->db,c->argv[2],&o);
+    dbAdd(c->db,c->argv[2],o);
     if (expire != -1) setExpire(c,c->db,c->argv[2],expire);
     dbDelete(c->db,c->argv[1]);
     signalModifiedKey(c,c->db,c->argv[1]);
@@ -1426,7 +1424,7 @@ void moveCommand(client *c) {
         addReply(c,shared.czero);
         return;
     }
-    dbAdd(dst,c->argv[1],&o);
+    dbAdd(dst,c->argv[1],o);
     if (expire != -1) setExpire(c,dst,c->argv[1],expire);
     incrRefCount(o);
 
@@ -1534,7 +1532,7 @@ void copyCommand(client *c) {
         dbDelete(dst,newkey);
     }
 
-    dbAdd(dst,newkey,&newobj);
+    dbAdd(dst,newkey,newobj);
     if (expire != -1) setExpire(c, dst, newkey, expire);
 
     /* OK! key copied */

@@ -495,7 +495,7 @@ void pushGenericCommand(client *c, int where, int xx) {
         }
 
         lobj = createListListpackObject();
-        dbAdd(c->db,c->argv[1], &lobj);
+        dbAdd(c->db,c->argv[1], lobj);
     }
 
     listTypeTryConversionAppend(lobj,c->argv,2,c->argc-1,NULL,NULL);
@@ -1105,7 +1105,7 @@ void lmoveHandlePush(client *c, robj *dstkey, robj *dstobj, robj *value,
     /* Create the list if the key does not exist */
     if (!dstobj) {
         dstobj = createListListpackObject();
-        dbAdd(c->db,dstkey, &dstobj);
+        dbAdd(c->db,dstkey, dstobj);
     }
     signalModifiedKey(c,c->db,dstkey);
     listTypeTryConversionAppend(dstobj,&value,0,0,NULL,NULL);
