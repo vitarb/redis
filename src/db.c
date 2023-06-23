@@ -479,14 +479,14 @@ int dbGenericDelete(redisDb *db, robj *key, int async, int flags) {
         robj *val = dictGetVal(de);
         /* RM_StringDMA may call dbUnshareStringValue which may free val, so we
          * need to incr to retain val */
-        incrRefCount(val);
+//        incrRefCount(val);
         /* Tells the module that the key has been unlinked from the database. */
         moduleNotifyKeyUnlink(key,val,db->id,flags);
         /* We want to try to unblock any module clients or clients using a blocking XREADGROUP */
         signalDeletedKeyAsReady(db,key,val->type);
         /* We should call decr before freeObjAsync. If not, the refcount may be
          * greater than 1, so freeObjAsync doesn't work */
-        decrRefCount(val);
+//        decrRefCount(val);
         if (async) {
             /* Because of dbUnshareStringValue, the val in de may change. */
             freeObjAsync(key, dictGetVal(de), db->id);
