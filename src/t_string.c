@@ -110,6 +110,7 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
     setkey_flags |= found ? SETKEY_ALREADY_EXIST : SETKEY_DOESNT_EXIST;
     robj *tmp = dupStringObject(val);
     setKey(c,c->db,key,tmp,setkey_flags);
+    zfree(tmp);
     server.dirty++;
     notifyKeyspaceEvent(NOTIFY_STRING,"set",key,c->db->id);
 
@@ -432,6 +433,7 @@ void getsetCommand(client *c) {
     c->argv[2] = tryObjectEncoding(c->argv[2]);
     robj *tmp = dupStringObject(c->argv[2]);
     setKey(c, c->db, c->argv[1], tmp, 0);
+    zfree(tmp);
     notifyKeyspaceEvent(NOTIFY_STRING,"set",c->argv[1],c->db->id);
     server.dirty++;
 
@@ -581,6 +583,7 @@ void msetGenericCommand(client *c, int nx) {
         c->argv[j+1] = tryObjectEncoding(c->argv[j+1]);
         robj *tmp = dupStringObject(c->argv[j + 1]);
         setKey(c, c->db, c->argv[j], tmp, 0);
+        zfree(tmp);
         notifyKeyspaceEvent(NOTIFY_STRING,"set",c->argv[j],c->db->id);
     }
     server.dirty += (c->argc-1)/2;

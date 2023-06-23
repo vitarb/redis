@@ -290,9 +290,10 @@ size_t dictSdsKeyToBytes(unsigned char *buf, const void *key, unsigned char *hea
 void dictObjectValToBytes(unsigned char *buf, const void *val, size_t n_bytes) {
     robj *o = (robj*)val;
     memcpy(buf, val, n_bytes);
+    robj *copy = (robj*)buf;
+    copy->refcount = OBJ_EMBEDDED_REFCOUNT;
     // Update robj->ptr for the embedded string to point into the buffer instead of the source.
     if (o->encoding == OBJ_ENCODING_EMBSTR) {
-        robj *copy = (robj*)buf; 
         copy->ptr = buf + sizeof(robj) + sizeof(struct sdshdr8); // skip robj itself and sds header.
     }
 }

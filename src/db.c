@@ -300,14 +300,14 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     if (overwrite) {
         /* RM_StringDMA may call dbUnshareStringValue which may free val, so we
          * need to incr to retain old */
-        incrRefCount(old);
+//        incrRefCount(old);
         /* Although the key is not really deleted from the database, we regard
          * overwrite as two steps of unlink+add, so we still need to call the unlink
          * callback of the module. */
         moduleNotifyKeyUnlink(key,old,db->id,DB_FLAG_KEY_OVERWRITE);
         /* We want to try to unblock any module clients or clients using a blocking XREADGROUP */
         signalDeletedKeyAsReady(db,key,old->type);
-        decrRefCount(old);
+//        decrRefCount(old);
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
@@ -327,7 +327,7 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
 /* Replace an existing key with a new value, we just replace value and don't
  * emit any events */
 dictEntry* dbReplaceValue(redisDb *db, robj *key, robj *val) {
-    dbSetValue(db, key, val, 0);
+    return dbSetValue(db, key, val, 0);
 }
 
 /* High level Set operation. This function can be used in order to set
@@ -351,13 +351,15 @@ dictEntry* setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
     else if (!(flags & SETKEY_DOESNT_EXIST))
         keyfound = (lookupKeyWrite(db,key) != NULL);
 
+    dictEntry *de;
     if (!keyfound) {
-        dbAdd(db,key,val);
+        de = dbAdd(db,key,val);
     } else {
-        dbSetValue(db,key,val,1);
+        de = dbSetValue(db,key,val,1);
     }
     if (!(flags & SETKEY_KEEPTTL)) removeExpire(db,key);
     if (!(flags & SETKEY_NO_SIGNAL)) signalModifiedKey(c,db,key);
+    return de;
 }
 
 /* Return a random key, in form of a Redis object.
