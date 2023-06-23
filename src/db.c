@@ -555,7 +555,7 @@ robj *dbUnshareStringValue(redisDb *db, robj *key, robj *o) {
         o = createRawStringObject(decoded->ptr, sdslen(decoded->ptr));
         decrRefCount(decoded);
         dictEntry *de = dbReplaceValue(db,key,o);
-        // FIXME (value embedding) o is leaked here, fix it by refactoring code that calls this function or allocate it on stack.
+        zfree(o);
         return dictGetVal(de);
     }
     return o;
@@ -1361,6 +1361,7 @@ void renameGenericCommand(client *c, int nx) {
         dbDelete(c->db,c->argv[2]);
     }
     dbAdd(c->db,c->argv[2],o);
+    o->ptr = NULL; // unlink old robj
     if (expire != -1) setExpire(c,c->db,c->argv[2],expire);
     dbDelete(c->db,c->argv[1]);
     signalModifiedKey(c,c->db,c->argv[1]);
@@ -1426,9 +1427,9 @@ void moveCommand(client *c) {
         addReply(c,shared.czero);
         return;
     }
-    dbAdd(dst,c->argv[1],o);
+    dbAdd(dst, c->argv[1], o);
+    o->ptr = NULL;
     if (expire != -1) setExpire(c,dst,c->argv[1],expire);
-    incrRefCount(o);
 
     /* OK! key moved, free the entry in the source DB */
     dbDelete(src,c->argv[1]);
@@ -1534,7 +1535,9 @@ void copyCommand(client *c) {
         dbDelete(dst,newkey);
     }
 
-    dbAdd(dst,newkey,newobj);
+    dictEntry *de = dbAdd(dst, newkey, newobj);
+    zfree(newobj);
+    newobj = dictGetVal(de);
     if (expire != -1) setExpire(c, dst, newkey, expire);
 
     /* OK! key copied */

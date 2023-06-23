@@ -446,7 +446,9 @@ robj *hashTypeLookupWriteOrCreate(client *c, robj *key) {
 
     if (o == NULL) {
         o = createHashObject();
-        dbAdd(c->db,key,o);
+        dictEntry *de = dbAdd(c->db, key, o);
+        zfree(o);
+        o = dictGetVal(de);
     }
     return o;
 }

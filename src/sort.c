@@ -291,12 +291,7 @@ void sortCommandGeneric(client *c, int readonly) {
         return;
     }
 
-    /* Now we need to protect sortval incrementing its count, in the future
-     * SORT may have options able to overwrite/delete keys during the sorting
-     * and the sorted key itself may get destroyed */
-    if (sortval)
-        incrRefCount(sortval);
-    else
+    if (!sortval)
         sortval = createQuicklistObject();
 
 
@@ -584,6 +579,7 @@ void sortCommandGeneric(client *c, int readonly) {
         if (outputlen) {
             listTypeTryConversion(sobj,LIST_CONV_AUTO,NULL,NULL);
             setKey(c,c->db,storekey,sobj,0);
+            zfree(sobj);
             notifyKeyspaceEvent(NOTIFY_LIST,"sortstore",storekey,
                                 c->db->id);
             server.dirty += outputlen;
@@ -599,7 +595,6 @@ void sortCommandGeneric(client *c, int readonly) {
     for (j = 0; j < vectorlen; j++)
         decrRefCount(vector[j].obj);
 
-    decrRefCount(sortval);
     listRelease(operations);
     for (j = 0; j < vectorlen; j++) {
         if (alpha && vector[j].u.cmpobj)

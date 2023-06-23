@@ -733,6 +733,7 @@ NULL
                 memcpy(val->ptr, buf, valsize<=buflen? valsize: buflen);
             }
             dbAdd(c->db,key,val);
+            zfree(val);
             signalModifiedKey(c,c->db,key);
             decrRefCount(key);
         }

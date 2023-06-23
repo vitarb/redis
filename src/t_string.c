@@ -467,7 +467,9 @@ void setrangeCommand(client *c) {
             return;
 
         o = createObject(OBJ_STRING,sdsnewlen(NULL, offset+sdslen(value)));
-        dbAdd(c->db,c->argv[1],o);
+        dictEntry *de = dbAdd(c->db, c->argv[1], o);
+        zfree(o);
+        o = dictGetVal(de);
     } else {
         size_t olen;
 
@@ -627,6 +629,7 @@ void incrDecrCommand(client *c, long long incr) {
         } else {
             dbAdd(c->db,c->argv[1],new);
         }
+        if (new->refcount != OBJ_SHARED_REFCOUNT) zfree(new);
     }
     signalModifiedKey(c,c->db,c->argv[1]);
     notifyKeyspaceEvent(NOTIFY_STRING,"incrby",c->argv[1],c->db->id);
@@ -677,10 +680,13 @@ void incrbyfloatCommand(client *c) {
         return;
     }
     new = createStringObjectFromLongDouble(value,1);
+    dictEntry *de;
     if (o)
-        dbReplaceValue(c->db,c->argv[1],new);
+        de = dbReplaceValue(c->db, c->argv[1], new);
     else
-        dbAdd(c->db,c->argv[1],new);
+        de = dbAdd(c->db,c->argv[1],new);
+    zfree(new); 
+    new = dictGetVal(de);
     signalModifiedKey(c,c->db,c->argv[1]);
     notifyKeyspaceEvent(NOTIFY_STRING,"incrbyfloat",c->argv[1],c->db->id);
     server.dirty++;
@@ -702,8 +708,9 @@ void appendCommand(client *c) {
     if (o == NULL) {
         /* Create the key */
         c->argv[2] = tryObjectEncoding(c->argv[2]);
-        dbAdd(c->db,c->argv[1],c->argv[2]);
-        incrRefCount(c->argv[2]);
+        robj *tmp = dupStringObject(c->argv[2]);
+        dbAdd(c->db,c->argv[1],tmp);
+        zfree(tmp);
         totlen = stringObjectLen(c->argv[2]);
     } else {
         /* Key exists, check type */
