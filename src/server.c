@@ -268,15 +268,6 @@ int dictSdsKeyCompare(dict *d, const void *key1,
     return memcmp(key1, key2, l1) == 0;
 }
 
-size_t dictObjectValLen(const void *val) { 
-    robj *o = (robj*)val;
-    if (o->encoding == OBJ_ENCODING_EMBSTR) {
-        return sizeof(robj) + sdsAllocSize((sds)o->ptr);
-    } else {
-        return sizeof(robj);
-    }
-}
-
 size_t dictSdsKeyLen(const void *key) { return sdsAllocSize((sds)key); }
 
 size_t dictSdsKeyToBytes(unsigned char *buf, const void *key, unsigned char *header_size) {
@@ -287,15 +278,26 @@ size_t dictSdsKeyToBytes(unsigned char *buf, const void *key, unsigned char *hea
     return n_bytes;
 }
 
-void dictObjectValToBytes(unsigned char *buf, const void *val, size_t n_bytes) {
+size_t dictObjectValLen(const void *val) {
     robj *o = (robj*)val;
-    memcpy(buf, val, n_bytes);
-    robj *copy = (robj*)buf;
-    copy->refcount = OBJ_EMBEDDED_REFCOUNT;
-    // Update robj->ptr for the embedded string to point into the buffer instead of the source.
     if (o->encoding == OBJ_ENCODING_EMBSTR) {
-        copy->ptr = buf + sizeof(robj) + sizeof(struct sdshdr8); // skip robj itself and sds header.
+        return sdsAllocSize((sds)o->ptr);
+    } else {
+        return 0;
     }
+}
+
+void dictObjectValToBytes(void *de, const void *val, unsigned char *buf) {
+    robj *o = (robj*)val;
+    robj *copy = (robj*)de;
+    memcpy(de, val, sizeof(robj));
+    // Update robj->ptr for the string to point into the buffer instead of the source.
+    if (o->encoding == OBJ_ENCODING_EMBSTR) {
+        sds valSds = (sds) copy->ptr;
+        memcpy(buf, sdsAllocPtr(copy->ptr), sdsAllocSize(valSds));
+        copy->ptr = buf + sdsHdrSize(valSds[-1]);
+    }
+    if (o->refcount == OBJ_SHARED_REFCOUNT) copy->refcount = 1;
 }
 
 /* A case insensitive version used for the command lookup table and other

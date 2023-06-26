@@ -73,6 +73,16 @@ struct dictEntry {
 };
 
 typedef struct {
+    unsigned type:4;
+    unsigned encoding:4;
+    unsigned lru:24;
+    int refcount;
+    union {
+        void *ptr;
+        uint64_t u64;
+        int64_t s64;
+        double d;
+    } v;
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
     unsigned char data[];
 } embeddedDictEntry;
@@ -165,7 +175,7 @@ static inline dictEntry *createEmbeddedEntry(void *key, void *val, dictEntry *ne
     embeddedDictEntry *entry = zmalloc(sizeof(*entry) + keyLen + valLen + ENTRY_METADATA_BYTES);
     size_t bytes_written = dt->keyToBytes(entry->data + ENTRY_METADATA_BYTES, key, &entry->data[0]);
     assert(bytes_written == keyLen);
-    dt->valToBytes(&entry->data[ENTRY_METADATA_BYTES + keyLen], val, valLen);
+    dt->valToBytes(entry, val, &entry->data[ENTRY_METADATA_BYTES + keyLen]);
     entry->next = next;
     return (dictEntry *)(void *)((uintptr_t)(void *)entry | ENTRY_PTR_EMBEDDED);
 }
@@ -183,12 +193,6 @@ static inline void *decodeMaskedPtr(const dictEntry *de) {
 static inline void *getEmbeddedKey(const dictEntry *de) {
     embeddedDictEntry *entry = (embeddedDictEntry *)decodeMaskedPtr(de);
     return &entry->data[ENTRY_METADATA_BYTES + entry->data[0]];
-}
-
-static inline void *getEmbeddedVal(const dictEntry *de) {
-    embeddedDictEntry *entry = (embeddedDictEntry *)decodeMaskedPtr(de);
-    sds key = (sds)&entry->data[ENTRY_METADATA_BYTES + entry->data[0]];
-    return &entry->data[ENTRY_METADATA_BYTES + sdsAllocSize(key)];
 }
 
 /* Decodes the pointer to an entry without value, when you know it is an entry
@@ -848,7 +852,7 @@ void *dictGetKey(const dictEntry *de) {
 void *dictGetVal(const dictEntry *de) {
     assert(entryHasValue(de));
     if (entryIsEmbedded(de)) {
-        return getEmbeddedVal(de);
+        return decodeEmbeddedEntry(de);
     }
     return de->v.val;
 }
