@@ -13,14 +13,12 @@ start_server {tags {"keyspace"}} {
         list [r del foo1{t} foo2{t} foo3{t} foo4{t}] [r mget foo1{t} foo2{t} foo3{t}]
     } {3 {{} {} {}}}
 
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73897
-if (0) {
     test {Untagged multi-key commands} {
         r mset foo1 a foo2 b foo3 c
         assert_equal {a b c {}} [r mget foo1 foo2 foo3 foo4]
         r del foo1 foo2 foo3 foo4
     } {3} {cluster:skip}
-}
+
     test {KEYS with pattern} {
         foreach key {key_x key_y key_z foo_a foo_b foo_c} {
             r set $key hello
@@ -81,8 +79,6 @@ if (0) {
         string match ERR* $err
     } {1}
 
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73909
-if (0) {
     test {RENAME basic usage} {
         r set mykey{t} hello
         r rename mykey{t} mykey1{t}
@@ -161,7 +157,7 @@ if (0) {
         r rename mykey{t} mykey2{t}
         r ttl mykey2{t}
     } {-1}
-}
+
     test {DEL all keys again (DB 0)} {
         foreach key [r keys *] {
             r del $key
@@ -394,8 +390,6 @@ foreach {type large} [array get largevalue] {
         r flushdb
     }
 
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73910
-if (0) {
     test {MOVE basic usage} {
         r set mykey foobar
         r move mykey 10
@@ -445,7 +439,6 @@ if (0) {
         assert {[r get mykey] eq "foo"}
         r select 9
     } {OK} {singledb:skip}
-}
 
     test {SET/GET keys in different DBs} {
         r set a hello

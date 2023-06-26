@@ -657,8 +657,6 @@ start_server {tags {"scripting"}} {
         assert_error "ERR Wrong number of args calling Redis command from script*" {run_script "redis.call('incr')" 0}
     }
 
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73913
-if (0) {
     test {Correct handling of reused argv (issue #1939)} {
         run_script {
               for i = 0, 10 do
@@ -670,7 +668,6 @@ if (0) {
               end
         } 3 a{t} b{t} c{t}
     }
-}
 
     test {Functions in the Redis namespace are able to report errors} {
         catch {
@@ -1738,8 +1735,7 @@ start_server {tags {"scripting"}} {
 
         r config set min-replicas-to-write 0
     }
-#FIXME (value embedding) - TBD
-if (0) {
+
     test "not enough good replicas state change during long script" {
         r set x "pre-script value"
         r config set min-replicas-to-write 1
@@ -1785,7 +1781,6 @@ if (0) {
         r config set min-replicas-to-write 0
         r config set lua-time-limit 5000
     } {OK} {external:skip needs:repl}
-}
 
     test "allow-stale shebang flag" {
         r config set replica-serve-stale-data no

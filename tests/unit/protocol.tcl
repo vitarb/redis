@@ -205,8 +205,6 @@ start_server {tags {"protocol network"}} {
         r debug protocol verbatim
     } "This is a verbatim\nstring" {needs:debug resp3}
 
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73897
-if (0) { 
     test "test large number of args" {
         r flushdb
         set args [split [string trim [string repeat "k v " 10000]]]
@@ -214,10 +212,7 @@ if (0) {
         r mset {*}$args
         assert_equal [r get "{k}2"] v2
     }
-}
-
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73896
-if (0) {
+    
     test "test argument rewriting - issue 9598" {
         # INCRBYFLOAT uses argument rewriting for correct float value propagation.
         # We use it to make sure argument rewriting works properly. It's important 
@@ -234,7 +229,7 @@ if (0) {
         r incrbyfloat k 1.0
         assert_equal [r exec] 2
     }
-}
+
 }
 
 start_server {tags {"regression"}} {

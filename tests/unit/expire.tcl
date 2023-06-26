@@ -530,8 +530,7 @@ start_server {tags {"expire"}} {
                 fail "Replication not started."
             }
         }
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73902
-if (0) {
+
         test {For all replicated TTL-related commands, absolute expire times are identical on primary and replica} {
             # Apply each TTL-related command to a unique key on primary
             # SET commands
@@ -574,7 +573,7 @@ if (0) {
                 assert_equal [$primary pexpiretime $key] [$replica pexpiretime $key]
             }
         }
-}
+
         test {expired key which is created in writeable replicas should be deleted by active expiry} {
             $primary flushall
             $replica config set replica-read-only no
@@ -606,8 +605,6 @@ if (0) {
         assert {$ttl <= 100 && $ttl > 90}
     }
 
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-72824
-if (1) {
     test {SET - use KEEPTTL option, TTL should not be removed after loadaof} {
         r config set appendonly yes
         r set foo bar EX 100
@@ -649,7 +646,6 @@ if (1) {
         }
         close_replication_stream $repl
     } {} {needs:repl}
-}
 
     test {EXPIRE with NX option on a key with ttl} {
         r SET foo bar EX 100

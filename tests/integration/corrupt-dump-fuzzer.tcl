@@ -71,8 +71,6 @@ proc corrupt_payload {payload} {
     return $payload
 }
 
-#FIXME (value embedding)
-if (0) {
 # fuzzy tester for corrupt RESTORE payloads
 # valgrind will make sure there were no leaks in the rdb loader error handling code
 foreach sanitize_dump {no yes} {
@@ -225,7 +223,7 @@ foreach sanitize_dump {no yes} {
         assert_equal $stat_terminated_by_signal 0
     }
 }
-}
+
 
 
 } ;# tags

@@ -894,9 +894,7 @@ start_server {tags {"multi"}} {
         r readraw 0
         set _ $res
     } {*CONFIG SET failed*}
-
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73897
-if (0) {
+    
     test "Flushall while watching several keys by one client" {
         r flushall
         r mset a{t} a b{t} b
@@ -905,10 +903,7 @@ if (0) {
         r ping
      }
 }
-}
 
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73897
-if (0) {
 start_server {overrides {appendonly {yes} appendfilename {appendonly.aof} appendfsync always} tags {external:skip}} {
     test {MULTI with FLUSHALL and AOF} {
         set aof [get_last_incr_aof_path r]
@@ -925,5 +920,4 @@ start_server {overrides {appendonly {yes} appendfilename {appendonly.aof} append
         }
         r get foo
     } {}
-}
 }

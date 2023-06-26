@@ -49,8 +49,6 @@ start_server {tags {"benchmark network external:skip logreqres:skip"}} {
             default_set_get_checks
         }
 
-#FIXME (value embedding)
-if (0) {
         test {benchmark: full test suite} {
             set cmd [redisbenchmark $master_host $master_port "-c 10 -n 100"]
             common_bench_setup $cmd
@@ -75,7 +73,7 @@ if (0) {
             # assert one of the non benchmarked commands is not present
             assert_match {} [cmdstat rpoplpush]
         }
-}
+
         test {benchmark: multi-thread set,get} {
             set cmd [redisbenchmark $master_host $master_port "--threads 10 -c 5 -n 10 -t set,get"]
             common_bench_setup $cmd
@@ -97,8 +95,6 @@ if (0) {
             assert_match  {1} [scan [regexp -inline {keys\=([\d]*)} [r info keyspace]] keys=%d]
         }
 
-#TODO (value embedding)
-if (0) {
         test {benchmark: arbitrary command} {
             set cmd [redisbenchmark $master_host $master_port "-c 5 -n 150 INCRBYFLOAT mykey 10.0"]
             common_bench_setup $cmd
@@ -129,7 +125,6 @@ if (0) {
             assert_match "*Error*" $error
             r config set maxclients $original_maxclients
         }
-}        
 
         # tls specific tests
         if {$::tls} {
