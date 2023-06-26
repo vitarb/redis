@@ -786,8 +786,10 @@ void dictTwoPhaseUnlinkFree(dict *d, dictEntry *he, dictEntry **plink, int table
     d->ht_used[table_index]--;
     *plink = dictGetNext(he);
     dictFreeKey(d, he);
-    dictFreeVal(d, he);
-    if (!entryIsKey(he)) zfree(decodeMaskedPtr(he));
+    if (!entryIsEmbedded(he) || (entryIsEmbedded(he) && decodeEmbeddedEntry(he)->refcount == 1)) {
+        dictFreeVal(d, he);
+        if (!entryIsKey(he)) zfree(decodeMaskedPtr(he));
+    }
     dictResumeRehashing(d);
 }
 
