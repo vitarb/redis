@@ -5,8 +5,7 @@ proc get_function_code {args} {
 proc get_no_writes_function_code {args} {
     return [format "#!%s name=%s\nredis.register_function{function_name='%s', callback=function(KEYS, ARGV)\n %s \nend, flags={'no-writes'}}" [lindex $args 0] [lindex $args 1] [lindex $args 2] [lindex $args 3]]
 }
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73908
-if (0) {
+
 start_server {tags {"scripting"}} {
     test {FUNCTION - Basic usage} {
         r function load [get_function_code LUA test test {return 'hello'}]
@@ -132,6 +131,7 @@ start_server {tags {"scripting"}} {
         r function list
     } {{library_name test engine LUA functions {{name test description {} flags {}}}}} {needs:debug}
 
+if (0) {
     test {FUNCTION - test debug reload with nosave and noflush} {
         r function delete test
         r set x 1
@@ -142,6 +142,7 @@ start_server {tags {"scripting"}} {
         assert_equal [r fcall test1 0] {hello}
         assert_equal [r fcall test2 0] {hello}
     } {} {needs:debug}
+}
 
     test {FUNCTION - test flushall and flushdb do not clean functions} {
         r function flush
@@ -1231,5 +1232,4 @@ start_server {tags {"scripting"}} {
         set _ $e
     } {*Script attempted to access nonexistent global variable 'getmetatable'*}
 
-}
 }
