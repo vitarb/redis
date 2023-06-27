@@ -805,6 +805,7 @@ void dictSetVal(dict *d, dictEntry **de, void *val) {
     assert(entryHasValue(*de));
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
     if (entryIsEmbedded(*de)) {
+        // TODO check if value changed size (e.g. old or new is embedded string of a different len) and avoid re-creation of an entry if possible.
         void *key = dictGetKey(*de);
         dictEntry *unlinked = dictUnlink(d, key);
         *de = dictAddWithValue(d, key, val);

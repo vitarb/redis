@@ -293,6 +293,9 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     dictEntry *de = dictFind(d, key->ptr);
 
     serverAssertWithInfo(NULL,key,de != NULL);
+    robj keyobj;
+    initStaticStringObject(keyobj, dictGetKey(de));
+    long long expire = getExpire(db, &keyobj); // TODO consider adding a bit into dictEntry to see if expiry exists or not, which should help avoid unnecessary searches.
     robj *old = dictGetVal(de);
     if (server.maxmemory_policy & MAXMEMORY_FLAG_LFU) {
         val->lru = old->lru;
@@ -300,18 +303,24 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     if (overwrite) {
         /* RM_StringDMA may call dbUnshareStringValue which may free val, so we
          * need to incr to retain old */
-//        incrRefCount(old);
+        incrRefCount(old);
         /* Although the key is not really deleted from the database, we regard
          * overwrite as two steps of unlink+add, so we still need to call the unlink
          * callback of the module. */
         moduleNotifyKeyUnlink(key,old,db->id,DB_FLAG_KEY_OVERWRITE);
         /* We want to try to unblock any module clients or clients using a blocking XREADGROUP */
         signalDeletedKeyAsReady(db,key,old->type);
-//        decrRefCount(old);
+        decrRefCount(old);
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
+    if (expire != -1) removeExpire(db, &keyobj);
+    // TODO change return type to int, returning non zero values if dictEntry has been moved. Avoid updating expiry if it hasn't moved.
     dictSetVal(d, &de, val);
+    if (expire != -1) {
+        initStaticStringObject(keyobj, dictGetKey(de));
+        setExpire(NULL, db, &keyobj, expire);
+    }
     return de;
     // FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73911
     /* old embedded entry is already cleaned up */
@@ -479,14 +488,14 @@ int dbGenericDelete(redisDb *db, robj *key, int async, int flags) {
         robj *val = dictGetVal(de);
         /* RM_StringDMA may call dbUnshareStringValue which may free val, so we
          * need to incr to retain val */
-//        incrRefCount(val);
+        incrRefCount(val);
         /* Tells the module that the key has been unlinked from the database. */
         moduleNotifyKeyUnlink(key,val,db->id,flags);
         /* We want to try to unblock any module clients or clients using a blocking XREADGROUP */
         signalDeletedKeyAsReady(db,key,val->type);
         /* We should call decr before freeObjAsync. If not, the refcount may be
          * greater than 1, so freeObjAsync doesn't work */
-//        decrRefCount(val);
+        decrRefCount(val);
         if (async) {
             /* Because of dbUnshareStringValue, the val in de may change. */
             freeObjAsync(key, dictGetVal(de), db->id);
