@@ -167,8 +167,7 @@ start_server {tags {"maxmemory external:skip"}} {
         assert_refcount 1 b
         r config set maxmemory 0
     }
-#FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73912
-if (0) {
+
     foreach policy {
         allkeys-random allkeys-lru allkeys-lfu volatile-lru volatile-lfu volatile-random volatile-ttl
     } {
@@ -200,7 +199,6 @@ if (0) {
             assert {[s used_memory] < ($limit+4096)}
         }
     }
-}
 
     foreach policy {
         allkeys-random allkeys-lru volatile-lru volatile-random volatile-ttl
