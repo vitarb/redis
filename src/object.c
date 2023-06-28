@@ -380,8 +380,6 @@ void incrRefCount(robj *o) {
             /* Nothing to do: this refcount is immutable. */
         } else if (o->refcount == OBJ_STATIC_REFCOUNT) {
             serverPanic("You tried to retain an object allocated in the stack");
-        } else if (o->refcount == OBJ_EMBEDDED_REFCOUNT) {
-            serverPanic("You tried to retain an object allocated in the embedded entry");
         }
     }
 }
@@ -391,7 +389,6 @@ void decrRefCount(robj *o) {
         freeReferencedObject(o);
         zfree(o);
     } else {
-        if (o->refcount == OBJ_EMBEDDED_REFCOUNT) serverPanic("decrRefCount against embedded object");
         if (o->refcount <= 0) serverPanic("decrRefCount against refcount <= 0");
         if (o->refcount != OBJ_SHARED_REFCOUNT) o->refcount--;
     }

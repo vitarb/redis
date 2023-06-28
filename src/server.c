@@ -319,7 +319,7 @@ void dictObjectDestructor(dict *d, void *val)
 void dictEmbeddedValueDestructor(dict *d, void *val)
 {
     UNUSED(d);
-    if (val == NULL) return; /* Lazy freeing will set value to NULL. */
+    if (val == NULL || server.lazyfree_lazy_server_del || ((robj*)val)->ptr == NULL) return; /* Lazy freeing will set value to NULL. */
     freeReferencedObject(val);
 }
 

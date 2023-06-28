@@ -293,6 +293,9 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     dictEntry *de = dictFind(d, key->ptr);
 
     serverAssertWithInfo(NULL,key,de != NULL);
+    /* Both key->ptr and dictEntry key point to equal sds strings.
+     * Using sds from the dictEntry instead of key object helps us avoid byte by byte key comparison in the expires dictionary,
+     * since main and expiry dictionaries share the same sds pointer, while key contains sds object that was newly allocated during processing of this call. */
     robj keyobj;
     initStaticStringObject(keyobj, dictGetKey(de));
     long long expire = getExpire(db, &keyobj); // TODO consider adding a bit into dictEntry to see if expiry exists or not, which should help avoid unnecessary searches.
@@ -314,6 +317,8 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
+    robj *valobj = createObject(old->type, old->ptr);
+    valobj->encoding = old->encoding;
     if (expire != -1) removeExpire(db, &keyobj);
     // TODO change return type to int, returning non zero values if dictEntry has been moved. Avoid updating expiry if it hasn't moved.
     dictSetVal(d, &de, val);
@@ -321,16 +326,11 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
         initStaticStringObject(keyobj, dictGetKey(de));
         setExpire(NULL, db, &keyobj, expire);
     }
-    return de;
-    // FIXME (value embedding) - https://sim.amazon.com/issues/ELMO-73911
     /* old embedded entry is already cleaned up */
-    // if (server.lazyfree_lazy_server_del) {
-    //     freeObjAsync(key,old,db->id);
-    // } else {
-    //     /* This is just decrRefCount(old); */
-    //     d->type->valDestructor(d, old);
-    // } 
-    
+    if (server.lazyfree_lazy_server_del) {
+        freeObjAsync(key, valobj, db->id);
+    }
+    return de;
 }
 
 /* Replace an existing key with a new value, we just replace value and don't
@@ -497,9 +497,11 @@ int dbGenericDelete(redisDb *db, robj *key, int async, int flags) {
          * greater than 1, so freeObjAsync doesn't work */
         decrRefCount(val);
         if (async) {
+            robj *valobj = createObject(val->type, val->ptr);
+            valobj->encoding = val->encoding;
             /* Because of dbUnshareStringValue, the val in de may change. */
-            freeObjAsync(key, dictGetVal(de), db->id);
-            dictSetVal(d, &de, NULL);
+            freeObjAsync(key, valobj, db->id);
+            val->ptr = NULL;
         }
         /* Deleting an entry from the expires dict will not free the sds of
         * the key, because it is shared with the main dictionary. */

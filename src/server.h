@@ -895,8 +895,7 @@ struct RedisModuleDigest {
 
 #define OBJ_SHARED_REFCOUNT INT_MAX     /* Global object never destroyed. */
 #define OBJ_STATIC_REFCOUNT (INT_MAX-1) /* Object allocated in the stack. */
-#define OBJ_EMBEDDED_REFCOUNT (INT_MAX-2) /* Object allocated inside of the dict entry. */
-#define OBJ_FIRST_SPECIAL_REFCOUNT OBJ_EMBEDDED_REFCOUNT
+#define OBJ_FIRST_SPECIAL_REFCOUNT OBJ_STATIC_REFCOUNT
 struct redisObject {
     unsigned type:4;
     unsigned encoding:4;
