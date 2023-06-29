@@ -1002,11 +1002,11 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
 
     if (o->type == OBJ_STRING) {
         if(o->encoding == OBJ_ENCODING_INT) {
-            asize = sizeof(*o);
+            asize = 0;
         } else if(o->encoding == OBJ_ENCODING_RAW) {
-            asize = sdsZmallocSize(o->ptr)+sizeof(*o);
+            asize = sdsZmallocSize(o->ptr);
         } else if(o->encoding == OBJ_ENCODING_EMBSTR) {
-            asize = zmalloc_size((void *)o);
+            asize = 0;
         } else {
             serverPanic("Unknown string encoding");
         }
@@ -1014,14 +1014,14 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
         if (o->encoding == OBJ_ENCODING_QUICKLIST) {
             quicklist *ql = o->ptr;
             quicklistNode *node = ql->head;
-            asize = sizeof(*o)+sizeof(quicklist);
+            asize = sizeof(quicklist);
             do {
                 elesize += sizeof(quicklistNode)+zmalloc_size(node->entry);
                 samples++;
             } while ((node = node->next) && samples < sample_size);
             asize += (double)elesize/samples*ql->len;
         } else if (o->encoding == OBJ_ENCODING_LISTPACK) {
-            asize = sizeof(*o)+zmalloc_size(o->ptr);
+            asize = zmalloc_size(o->ptr);
         } else {
             serverPanic("Unknown list encoding");
         }
@@ -1029,34 +1029,34 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
         if (o->encoding == OBJ_ENCODING_HT) {
             d = o->ptr;
             di = dictGetIterator(d);
-            asize = sizeof(*o)+sizeof(dict)+(sizeof(struct dictEntry*)*dictSlots(d));
+            asize = sizeof(dict)+(sizeof(struct dictEntry*)*dictSlots(d));
             while((de = dictNext(di)) != NULL && samples < sample_size) {
                 ele = dictGetKey(de);
-                elesize += dictEntryMemUsage() + sdsZmallocSize(ele);
+                elesize += dictEntryMemUsage(d) + sdsZmallocSize(ele);
                 samples++;
             }
             dictReleaseIterator(di);
             if (samples) asize += (double)elesize/samples*dictSize(d);
         } else if (o->encoding == OBJ_ENCODING_INTSET) {
-            asize = sizeof(*o)+zmalloc_size(o->ptr);
+            asize = zmalloc_size(o->ptr);
         } else if (o->encoding == OBJ_ENCODING_LISTPACK) {
-            asize = sizeof(*o)+zmalloc_size(o->ptr);
+            asize = zmalloc_size(o->ptr);
         } else {
             serverPanic("Unknown set encoding");
         }
     } else if (o->type == OBJ_ZSET) {
         if (o->encoding == OBJ_ENCODING_LISTPACK) {
-            asize = sizeof(*o)+zmalloc_size(o->ptr);
+            asize = zmalloc_size(o->ptr);
         } else if (o->encoding == OBJ_ENCODING_SKIPLIST) {
             d = ((zset*)o->ptr)->dict;
             zskiplist *zsl = ((zset*)o->ptr)->zsl;
             zskiplistNode *znode = zsl->header->level[0].forward;
-            asize = sizeof(*o)+sizeof(zset)+sizeof(zskiplist)+sizeof(dict)+
+            asize = sizeof(zset)+sizeof(zskiplist)+sizeof(dict)+
                     (sizeof(struct dictEntry*)*dictSlots(d))+
                     zmalloc_size(zsl->header);
             while(znode != NULL && samples < sample_size) {
                 elesize += sdsZmallocSize(znode->ele);
-                elesize += dictEntryMemUsage()+zmalloc_size(znode);
+                elesize += dictEntryMemUsage(d)+zmalloc_size(znode);
                 samples++;
                 znode = znode->level[0].forward;
             }
@@ -1066,16 +1066,16 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
         }
     } else if (o->type == OBJ_HASH) {
         if (o->encoding == OBJ_ENCODING_LISTPACK) {
-            asize = sizeof(*o)+zmalloc_size(o->ptr);
+            asize = zmalloc_size(o->ptr);
         } else if (o->encoding == OBJ_ENCODING_HT) {
             d = o->ptr;
             di = dictGetIterator(d);
-            asize = sizeof(*o)+sizeof(dict)+(sizeof(struct dictEntry*)*dictSlots(d));
+            asize = sizeof(dict)+(sizeof(struct dictEntry*)*dictSlots(d));
             while((de = dictNext(di)) != NULL && samples < sample_size) {
                 ele = dictGetKey(de);
                 ele2 = dictGetVal(de);
                 elesize += sdsZmallocSize(ele) + sdsZmallocSize(ele2);
-                elesize += dictEntryMemUsage();
+                elesize += dictEntryMemUsage(d);
                 samples++;
             }
             dictReleaseIterator(di);
@@ -1085,7 +1085,7 @@ size_t objectComputeSize(robj *key, robj *o, size_t sample_size, int dbid) {
         }
     } else if (o->type == OBJ_STREAM) {
         stream *s = o->ptr;
-        asize = sizeof(*o)+sizeof(*s);
+        asize = sizeof(*s);
         asize += streamRadixTreeMemoryUsage(s->rax);
 
         /* Now we have to add the listpacks. The last listpack is often non
@@ -1247,7 +1247,7 @@ struct redisMemOverhead *getMemoryOverheadData(void) {
         mh->db = zrealloc(mh->db,sizeof(mh->db[0])*(mh->num_dbs+1));
         mh->db[mh->num_dbs].dbid = j;
 
-        mem = keyscount * dictEntryMemUsage() +
+        mem = keyscount * dictEntryMemUsage(db->dict[0]) +
               dbSlots(db) * sizeof(dictEntry*) +
               keyscount * sizeof(robj) +
               db->dict_count * sizeof(dict);
@@ -1546,8 +1546,7 @@ NULL
             return;
         }
         size_t usage = objectComputeSize(c->argv[2],dictGetVal(de),samples,c->db->id);
-        usage += c->db->dict[getKeySlot(c->argv[2]->ptr)]->type->keyLen(dictGetKey(de));
-        usage += dictEntryMemUsage();
+        usage += dictEntryZmallocSize(de);
         addReplyLongLong(c,usage);
     } else if (!strcasecmp(c->argv[1]->ptr,"stats") && c->argc == 2) {
         struct redisMemOverhead *mh = getMemoryOverheadData();

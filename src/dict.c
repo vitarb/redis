@@ -942,12 +942,20 @@ static void dictSetNext(dictEntry *de, dictEntry *next) {
 /* Returns the memory usage in bytes of the dict, excluding the size of the keys
  * and values. */
 size_t dictMemUsage(const dict *d) {
-    return dictSize(d) * sizeof(dictEntry) +
+    return dictSize(d) * dictEntryMemUsage(d) +
         dictSlots(d) * sizeof(dictEntry*);
 }
 
-size_t dictEntryMemUsage(void) {
+size_t dictEntryMemUsage(const dict *d) {
+    if (d->type->embedded_entry)
+        return sizeof(embeddedDictEntry);
+    if (d->type->no_value)
+        return sizeof(dictEntryNoValue);
     return sizeof(dictEntry);
+}
+
+size_t dictEntryZmallocSize(const dictEntry *de) {
+    return zmalloc_size(decodeMaskedPtr(de));
 }
 
 /* A fingerprint is a 64 bit number that represents the state of the dictionary
