@@ -352,7 +352,7 @@ dictEntry* dbReplaceValue(redisDb *db, robj *key, robj *val) {
  * All the new keys in the database should be created via this interface.
  * The client 'c' argument may be set to NULL if the operation is performed
  * in a context where there is no clear client performing the operation. */
-dictEntry* setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
+dictEntry* setKey(client *c, redisDb *db, robj *key, robj **val, int flags) {
     int keyfound = 0;
 
     if (flags & SETKEY_ALREADY_EXIST)
@@ -362,10 +362,12 @@ dictEntry* setKey(client *c, redisDb *db, robj *key, robj *val, int flags) {
 
     dictEntry *de;
     if (!keyfound) {
-        de = dbAdd(db,key,val);
+        de = dbAdd(db,key,*val);
     } else {
-        de = dbSetValue(db,key,val,1);
+        de = dbSetValue(db,key,*val,1);
     }
+    *val = dictGetVal(de);
+    incrRefCount(*val);
     if (!(flags & SETKEY_KEEPTTL)) removeExpire(db,key);
     if (!(flags & SETKEY_NO_SIGNAL)) signalModifiedKey(c,db,key);
     return de;
