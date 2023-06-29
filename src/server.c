@@ -296,7 +296,6 @@ int dictObjectTrySetVal(void *de, const void *val) {
     old->type = new->type;
     old->encoding = new->encoding;
     old->lru = new->lru;
-    if (new->refcount != OBJ_SHARED_REFCOUNT) old->refcount = new->refcount;
     old->ptr = new->ptr;
     return 1;
 }
@@ -311,7 +310,7 @@ void dictObjectValToBytes(void *de, const void *val, unsigned char *buf) {
         memcpy(buf, sdsAllocPtr(copy->ptr), sdsAllocSize(valSds));
         copy->ptr = buf + sdsHdrSize(valSds[-1]);
     }
-    if (new->refcount == OBJ_SHARED_REFCOUNT) copy->refcount = 1;
+    copy->refcount = 1;
 }
 
 /* A case insensitive version used for the command lookup table and other
