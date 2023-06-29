@@ -287,17 +287,31 @@ size_t dictObjectValLen(const void *val) {
     }
 }
 
+int dictObjectTrySetVal(void *de, const void *val) {
+    robj *new = (robj*)val;
+    robj *old = (robj*)de;
+    /* Only values that are referenced through pointer can be set directly,
+     * embedded strings would require new object allocation. */
+    if (old->encoding == OBJ_ENCODING_EMBSTR || new->encoding == OBJ_ENCODING_EMBSTR) return 0;
+    old->type = new->type;
+    old->encoding = new->encoding;
+    old->lru = new->lru;
+    if (new->refcount != OBJ_SHARED_REFCOUNT) old->refcount = new->refcount;
+    old->ptr = new->ptr;
+    return 1;
+}
+
 void dictObjectValToBytes(void *de, const void *val, unsigned char *buf) {
-    robj *o = (robj*)val;
+    robj *new = (robj*)val;
     robj *copy = (robj*)de;
     memcpy(de, val, sizeof(robj));
     // Update robj->ptr for the string to point into the buffer instead of the source.
-    if (o->encoding == OBJ_ENCODING_EMBSTR) {
+    if (new->encoding == OBJ_ENCODING_EMBSTR) {
         sds valSds = (sds) copy->ptr;
         memcpy(buf, sdsAllocPtr(copy->ptr), sdsAllocSize(valSds));
         copy->ptr = buf + sdsHdrSize(valSds[-1]);
     }
-    if (o->refcount == OBJ_SHARED_REFCOUNT) copy->refcount = 1;
+    if (new->refcount == OBJ_SHARED_REFCOUNT) copy->refcount = 1;
 }
 
 /* A case insensitive version used for the command lookup table and other
@@ -502,6 +516,7 @@ dictType dbDictType = {
     dictSdsKeyToBytes,
     dictObjectValLen,
     dictObjectValToBytes,
+    dictObjectTrySetVal,
     .embedded_entry = 1
 };
 

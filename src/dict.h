@@ -60,6 +60,7 @@ typedef struct dictType {
     size_t (*keyToBytes)(unsigned char *buf, const void *key, uint8_t *header_size);
     size_t (*valLen)(const void *val);
     void (*valToBytes)(void *de, const void *val, unsigned char *buf);
+    int (*trySetVal)(void *de, const void *val);
 
     /* Flags */
     /* The 'no_value' flag, if set, indicates that values are not used, i.e. the

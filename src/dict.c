@@ -805,11 +805,12 @@ void dictSetVal(dict *d, dictEntry **de, void *val) {
     assert(entryHasValue(*de));
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
     if (entryIsEmbedded(*de)) {
-        // TODO check if value changed size (e.g. old or new is embedded string of a different len) and avoid re-creation of an entry if possible.
         void *key = dictGetKey(*de);
-        dictEntry *unlinked = dictUnlink(d, key);
-        *de = dictAddWithValue(d, key, val);
-        dictFreeUnlinkedEntry(d, unlinked);
+        if (!d->type->trySetVal(decodeEmbeddedEntry(*de), val)) { /* If size of the value didn't change then we can simply reassign pointers, otherwise new entry must be created. */
+            dictEntry *unlinked = dictUnlink(d, key);
+            *de = dictAddWithValue(d, key, val);
+            dictFreeUnlinkedEntry(d, unlinked);
+        }
     } else {
         (*de)->v.val = v;
     }
