@@ -669,20 +669,7 @@ void dictFreeUnlinkedEntry(dict *d, dictEntry *he) {
     dictFreeKey(d, he);
     dictFreeVal(d, he);
     /* Clear the dictEntry */
-    if (!entryIsKey(he)) {
-        if (entryIsEmbedded(he)) {
-            embeddedDictEntry *de = decodeEmbeddedEntry(he);
-            /* 
-             * Still being referenced somewhere else apart from the dictionary. 
-             * e.g. client argv holding reference in case of `mset foo 1 foo 2`.
-             */
-            if (de->refcount > 1) {
-                de->refcount--;
-                return;
-            }
-        }
-        zfree(decodeMaskedPtr(he));
-    }
+    if (!entryIsKey(he)) zfree(decodeMaskedPtr(he));
 }
 
 /* Destroy an entire dictionary */
@@ -700,26 +687,7 @@ int _dictClear(dict *d, int htidx, void(callback)(dict*)) {
             nextHe = dictGetNext(he);
             dictFreeKey(d, he);
             dictFreeVal(d, he);
-            if (!entryIsKey(he)) {
-                if (entryIsEmbedded(he)) {
-                    embeddedDictEntry *de = decodeEmbeddedEntry(he);
-                    /*
-                    * Still being referenced somewhere else apart from the dictionary.
-                    * e.g. client argv holding reference in case of
-                    * multi
-                    *   set foo 1
-                    *   flushall
-                    * exec`.
-                    */
-                    if (de->refcount > 1) {
-                        de->refcount--;
-                    } else {
-                        zfree(decodeMaskedPtr(he));
-                    }
-                } else {
-                    zfree(decodeMaskedPtr(he));
-                }
-            }
+            if (!entryIsKey(he)) zfree(decodeMaskedPtr(he));
             d->ht_used[htidx]--;
             he = nextHe;
         }
