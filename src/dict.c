@@ -39,11 +39,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdarg.h>
 #include <limits.h>
 #include <sys/time.h>
 
-#include "sds.h"
 #include "dict.h"
 #include "zmalloc.h"
 #include "redisassert.h"
@@ -72,17 +70,15 @@ struct dictEntry {
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
 };
 
+/* Embedded entry contains redis object's fields in the same order and can be cast directly to robj.
+ * Sds key is embedded into data array, as well as values that use embedded string encoding.
+ * Using this structure saves 2 pointers (16 bytes) comparing to the normal dictEntry. */
 typedef struct {
     unsigned type:4;
     unsigned encoding:4;
     unsigned lru:24;
     int refcount;
-    union {
-        void *ptr;
-        uint64_t u64;
-        int64_t s64;
-        double d;
-    } v;
+    void *ptr;
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
     unsigned char data[];
 } embeddedDictEntry;
