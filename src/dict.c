@@ -77,8 +77,8 @@ typedef struct {
     unsigned type:4;
     unsigned encoding:4;
     unsigned lru:24;
-    unsigned int refcount:31;
-    unsigned int state:1;
+    unsigned int refcount:28;
+    unsigned int state:4;
     void *ptr;
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
     unsigned char data[];
@@ -670,7 +670,7 @@ void dictFreeUnlinkedEntry(dict *d, dictEntry *he) {
     dictFreeKey(d, he);
     dictFreeVal(d, he);
     /* Clear the dictEntry */
-    if (!entryIsKey(he)) zfree(decodeMaskedPtr(he));
+    if (!entryIsKey(he) && !entryIsEmbedded(he)) zfree(decodeMaskedPtr(he));
 }
 
 /* Destroy an entire dictionary */
@@ -688,7 +688,7 @@ int _dictClear(dict *d, int htidx, void(callback)(dict*)) {
             nextHe = dictGetNext(he);
             dictFreeKey(d, he);
             dictFreeVal(d, he);
-            if (!entryIsKey(he)) zfree(decodeMaskedPtr(he));
+            if (!entryIsKey(he) && !entryIsEmbedded(he)) zfree(decodeMaskedPtr(he));
             d->ht_used[htidx]--;
             he = nextHe;
         }
@@ -783,10 +783,8 @@ void dictTwoPhaseUnlinkFree(dict *d, dictEntry *he, dictEntry **plink, int table
     d->ht_used[table_index]--;
     *plink = dictGetNext(he);
     dictFreeKey(d, he);
-    if (!entryIsEmbedded(he) || (entryIsEmbedded(he) && decodeEmbeddedEntry(he)->refcount == 1)) {
-        dictFreeVal(d, he);
-        if (!entryIsKey(he)) zfree(decodeMaskedPtr(he));
-    }
+    dictFreeVal(d, he);
+    if (!entryIsKey(he) && !entryIsEmbedded(he)) zfree(decodeMaskedPtr(he));
     dictResumeRehashing(d);
 }
 

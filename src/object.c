@@ -386,17 +386,7 @@ void incrRefCount(robj *o) {
     }
 }
 
-void decrRefCount(robj *o) {
-    if (o->refcount == 1) {
-        if (o->state != OBJ_STATE_MOVED) freeReferencedObject(o);
-        zfree(o);
-    } else {
-        if (o->refcount <= 0) serverPanic("decrRefCount against refcount <= 0");
-        if (o->refcount != OBJ_SHARED_REFCOUNT) o->refcount--;
-    }
-}
-
-void freeReferencedObject(robj *o) {
+static void freeReferencedObject(robj *o) {
     switch(o->type) {
         case OBJ_STRING: freeStringObject(o); break;
         case OBJ_LIST: freeListObject(o); break;
@@ -406,6 +396,17 @@ void freeReferencedObject(robj *o) {
         case OBJ_MODULE: freeModuleObject(o); break;
         case OBJ_STREAM: freeStreamObject(o); break;
         default: serverPanic("Unknown object type");
+    }
+}
+
+void decrRefCount(robj *o) {
+    if (o->refcount == 1) {
+        serverAssert(!(o->state & OBJ_STATE_PROTECTED));
+        if (!(o->state & OBJ_STATE_MOVED)) freeReferencedObject(o);
+        zfree(o);
+    } else {
+        if (o->refcount <= 0) serverPanic("decrRefCount against refcount <= 0");
+        if (o->refcount != OBJ_SHARED_REFCOUNT) o->refcount--;
     }
 }
 

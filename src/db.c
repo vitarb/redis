@@ -329,6 +329,8 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     /* old embedded entry is already cleaned up */
     if (server.lazyfree_lazy_server_del) {
         freeObjAsync(key, valobj, db->id);
+    } else {
+        d->type->valDestructor(d, valobj);
     }
     return de;
 }

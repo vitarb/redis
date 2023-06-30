@@ -893,10 +893,16 @@ struct RedisModuleDigest {
 #define LRU_CLOCK_MAX ((1<<LRU_BITS)-1) /* Max value of obj->lru */
 #define LRU_CLOCK_RESOLUTION 1000 /* LRU clock resolution in ms */
 
-#define OBJ_SHARED_REFCOUNT INT_MAX     /* Global object never destroyed. */
-#define OBJ_STATIC_REFCOUNT (INT_MAX-1) /* Object allocated in the stack. */
+#define STATE_BITS 4
+
+#define OBJ_SHARED_REFCOUNT (INT_MAX>>STATE_BITS)    /* Global object never destroyed. */
+#define OBJ_STATIC_REFCOUNT ((INT_MAX>>STATE_BITS)-1) /* Object allocated in the stack. */
 #define OBJ_FIRST_SPECIAL_REFCOUNT OBJ_STATIC_REFCOUNT
-#define OBJ_STATE_MOVED 1 /* Moved objects don't own the value behind the pointer. */
+
+/* Object flags */
+#define OBJ_STATE_NONE          0 
+#define OBJ_STATE_MOVED     (1<<0)     /* Moved objects don't own the value behind the pointer. */
+#define OBJ_STATE_PROTECTED (1<<1)     /* Moved objects don't own the value behind the pointer. */
 
 struct redisObject {
     unsigned type:4;
@@ -904,8 +910,8 @@ struct redisObject {
     unsigned lru:LRU_BITS; /* LRU time (relative to global lru_clock) or
                             * LFU data (least significant 8 bits frequency
                             * and most significant 16 bits access time). */
-    unsigned int refcount:31;
-    unsigned int state:1;
+    unsigned refcount:(32-STATE_BITS);
+    unsigned state:STATE_BITS;
     void *ptr;
 };
 
@@ -2742,7 +2748,6 @@ void execCommandAbort(client *c, sds error);
 
 /* Redis object implementation */
 void decrRefCount(robj *o);
-void freeReferencedObject(robj *o);
 void decrRefCountVoid(void *o);
 void incrRefCount(robj *o);
 robj *makeObjectShared(robj *o);

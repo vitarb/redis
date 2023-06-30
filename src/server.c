@@ -311,7 +311,7 @@ void dictObjectValToBytes(void *de, const void *val, unsigned char *buf) {
         copy->ptr = buf + sdsHdrSize(valSds[-1]);
     }
     copy->refcount = 1;
-    copy->state = 0;
+    copy->state |= OBJ_STATE_PROTECTED;
 }
 
 /* A case insensitive version used for the command lookup table and other
@@ -332,9 +332,13 @@ void dictObjectDestructor(dict *d, void *val)
 
 void dictEmbeddedValueDestructor(dict *d, void *val)
 {
+    robj *obj = ((robj*)val);
     UNUSED(d);
-    if (val == NULL || server.lazyfree_lazy_server_del || ((robj*)val)->ptr == NULL) return; /* Lazy freeing will set value to NULL. */
-    freeReferencedObject(val);
+    if (val == NULL || server.lazyfree_lazy_server_del || obj->ptr == NULL) return; /* Lazy freeing will set value to NULL. */
+    if (obj->state & OBJ_STATE_PROTECTED) {
+        obj->state &= ~(OBJ_STATE_PROTECTED); /* unlinked from dict. */
+        decrRefCount(obj);
+    } 
 }
 
 void dictSdsDestructor(dict *d, void *val)
