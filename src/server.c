@@ -311,6 +311,7 @@ void dictObjectValToBytes(void *de, const void *val, unsigned char *buf) {
         copy->ptr = buf + sdsHdrSize(valSds[-1]);
     }
     copy->refcount = 1;
+    copy->state = 0;
 }
 
 /* A case insensitive version used for the command lookup table and other

@@ -77,7 +77,8 @@ typedef struct {
     unsigned type:4;
     unsigned encoding:4;
     unsigned lru:24;
-    int refcount;
+    unsigned int refcount:31;
+    unsigned int state:1;
     void *ptr;
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
     unsigned char data[];
