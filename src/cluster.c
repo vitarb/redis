@@ -6448,7 +6448,7 @@ void restoreCommand(client *c) {
 
     /* Create the key and set the TTL if any */
     dictEntry *de = dbAdd(c->db, key, obj);
-    zfree(obj);
+    decrRefCount(obj);
     obj = dictGetVal(de);
 
     if (ttl) {

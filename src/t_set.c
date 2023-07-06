@@ -612,7 +612,7 @@ void saddCommand(client *c) {
     if (set == NULL) {
         set = setTypeCreate(c->argv[2]->ptr, c->argc - 2);
         dictEntry *de = dbAdd(c->db, c->argv[1], set);
-        zfree(set);
+        decrRefCount(set);
         set = dictGetVal(de);
     } else {
         setTypeMaybeConvert(set, c->argc - 2);
@@ -698,7 +698,7 @@ void smoveCommand(client *c) {
     if (!dstset) {
         dstset = setTypeCreate(ele->ptr, 1);
         dictEntry *de = dbAdd(c->db, c->argv[2], dstset);
-        zfree(dstset);
+        decrRefCount(dstset);
         dstset = dictGetVal(de);
     }
 
@@ -937,7 +937,7 @@ void spopWithCountCommand(client *c) {
 
         /* Assign the new set as the key value. */
         dictEntry *de = dbReplaceValue(c->db, c->argv[1], newset);
-        zfree(newset);
+        decrRefCount(newset);
         newset = dictGetVal(de);
     }
 
@@ -1399,7 +1399,7 @@ void sinterGenericCommand(client *c, robj **setkeys,
                 dstset->ptr = lpShrinkToFit(dstset->ptr);
             }
             dictEntry *de = setKey(c, c->db, dstkey, dstset, 0);
-            zfree(dstset);
+            decrRefCount(dstset);
             dstset = dictGetVal(de);
             addReplyLongLong(c,setTypeSize(dstset));
             notifyKeyspaceEvent(NOTIFY_SET,"sinterstore",
@@ -1613,7 +1613,7 @@ void sunionDiffGenericCommand(client *c, robj **setkeys, int setnum,
          * create this key with the result set inside */
         if (setTypeSize(dstset) > 0) {
             dictEntry *de = setKey(c, c->db, dstkey, dstset, 0);
-            zfree(dstset);
+            decrRefCount(dstset);
             dstset = dictGetVal(de);
             addReplyLongLong(c,setTypeSize(dstset));
             notifyKeyspaceEvent(NOTIFY_SET,

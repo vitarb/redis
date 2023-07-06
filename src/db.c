@@ -317,8 +317,6 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
-    robj *valobj = createObject(old->type, old->ptr);
-    valobj->encoding = old->encoding;
     if (expire != -1) removeExpire(db, &keyobj);
     // TODO change return type to int, returning non zero values if dictEntry has been moved. Avoid updating expiry if it hasn't moved.
     dictSetVal(d, &de, val);
@@ -326,11 +324,11 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
         initStaticStringObject(keyobj, dictGetKey(de));
         setExpire(NULL, db, &keyobj, expire);
     }
+    robj *valobj = createObject(old->type, old->ptr);
+    valobj->encoding = old->encoding;
     /* old embedded entry is already cleaned up */
     if (server.lazyfree_lazy_server_del) {
         freeObjAsync(key, valobj, db->id);
-    } else {
-        d->type->valDestructor(d, valobj);
     }
     return de;
 }
@@ -568,7 +566,7 @@ robj *dbUnshareStringValue(redisDb *db, robj *key, robj *o) {
         o = createRawStringObject(decoded->ptr, sdslen(decoded->ptr));
         decrRefCount(decoded);
         dictEntry *de = dbReplaceValue(db,key,o);
-        zfree(o);
+        decrRefCount(o);
         return dictGetVal(de);
     }
     return o;
@@ -1374,7 +1372,6 @@ void renameGenericCommand(client *c, int nx) {
         dbDelete(c->db,c->argv[2]);
     }
     dbAdd(c->db,c->argv[2],o);
-    o->ptr = NULL; // unlink old robj
     if (expire != -1) setExpire(c,c->db,c->argv[2],expire);
     dbDelete(c->db,c->argv[1]);
     signalModifiedKey(c,c->db,c->argv[1]);
@@ -1441,7 +1438,6 @@ void moveCommand(client *c) {
         return;
     }
     dbAdd(dst, c->argv[1], o);
-    o->ptr = NULL;
     if (expire != -1) setExpire(c,dst,c->argv[1],expire);
 
     /* OK! key moved, free the entry in the source DB */
@@ -1549,7 +1545,7 @@ void copyCommand(client *c) {
     }
 
     dictEntry *de = dbAdd(dst, newkey, newobj);
-    zfree(newobj);
+    decrRefCount(newobj);
     newobj = dictGetVal(de);
     if (expire != -1) setExpire(c, dst, newkey, expire);
 

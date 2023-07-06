@@ -496,7 +496,7 @@ void pushGenericCommand(client *c, int where, int xx) {
 
         lobj = createListListpackObject();
         dictEntry *de = dbAdd(c->db, c->argv[1], lobj);
-        zfree(lobj);
+        decrRefCount(lobj);
         lobj = dictGetVal(de);
     }
 
@@ -1108,7 +1108,7 @@ void lmoveHandlePush(client *c, robj *dstkey, robj *dstobj, robj *value,
     if (!dstobj) {
         dstobj = createListListpackObject();
         dictEntry *de = dbAdd(c->db, dstkey, dstobj);
-        zfree(dstobj);
+        decrRefCount(dstobj);
         dstobj = dictGetVal(de);
     }
     signalModifiedKey(c,c->db,dstkey);

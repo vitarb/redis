@@ -896,13 +896,13 @@ struct RedisModuleDigest {
 #define STATE_BITS 4
 
 #define OBJ_SHARED_REFCOUNT (INT_MAX>>STATE_BITS)    /* Global object never destroyed. */
-#define OBJ_STATIC_REFCOUNT ((INT_MAX>>STATE_BITS)-1) /* Object allocated in the stack. */
+#define OBJ_STATIC_REFCOUNT (OBJ_SHARED_REFCOUNT-1) /* Object allocated in the stack. */
 #define OBJ_FIRST_SPECIAL_REFCOUNT OBJ_STATIC_REFCOUNT
 
 /* Object flags */
 #define OBJ_STATE_NONE          0 
-#define OBJ_STATE_MOVED     (1<<0)     /* Moved objects don't own the value behind the pointer. */
-#define OBJ_STATE_PROTECTED (1<<1)     /* Moved objects don't own the value behind the pointer. */
+#define OBJ_STATE_REFERENCE (1<<0)     /* Reference objects don't own the value behind the pointer and are not responsible for its cleanup. */
+#define OBJ_STATE_PROTECTED (1<<1)         /* Protected objects can't be freed until protected flag is removed. */
 
 struct redisObject {
     unsigned type:4;

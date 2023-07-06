@@ -70,15 +70,24 @@ struct dictEntry {
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
 };
 
+/* TODO (value embedding) share object state between object.c and dict.c to avoid copy pasting. */
+#define LRU_BITS 24
+#define STATE_BITS 4
+/* Object flags */
+#define OBJ_STATE_NONE          0
+#define OBJ_STATE_REFERENCE     (1<<0)     /* Reference objects don't own the value behind the pointer and are not responsible for its cleanup. */
+#define OBJ_STATE_PROTECTED (1<<1)         /* Protected objects can't be freed until protected flag is removed. */
+
+
 /* Embedded entry contains redis object's fields in the same order and can be cast directly to robj.
  * Sds key is embedded into data array, as well as values that use embedded string encoding.
  * Using this structure saves 2 pointers (16 bytes) comparing to the normal dictEntry. */
 typedef struct {
     unsigned type:4;
     unsigned encoding:4;
-    unsigned lru:24;
-    unsigned int refcount:28;
-    unsigned int state:4;
+    unsigned lru:LRU_BITS;
+    unsigned int refcount:(32-STATE_BITS);
+    unsigned int state:STATE_BITS;
     void *ptr;
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
     unsigned char data[];
@@ -669,7 +678,7 @@ void dictFreeUnlinkedEntry(dict *d, dictEntry *he) {
     if (he == NULL) return;
     dictFreeKey(d, he);
     dictFreeVal(d, he);
-    /* Clear the dictEntry */
+    /* Clear the dictEntry, if entry is key or embedded then key/val destructor would free it. */
     if (!entryIsKey(he) && !entryIsEmbedded(he)) zfree(decodeMaskedPtr(he));
 }
 

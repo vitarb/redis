@@ -487,7 +487,7 @@ robj *lookupStringForBitCommand(client *c, uint64_t maxbit, int *dirty) {
     if (o == NULL) {
         o = createObject(OBJ_STRING,sdsnewlen(NULL, byte+1));
         dictEntry *de = dbAdd(c->db, c->argv[1], o);
-        zfree(o);
+        decrRefCount(o);
         o = dictGetVal(de);
         if (dirty) *dirty = 1;
     } else {
@@ -783,7 +783,7 @@ void bitopCommand(client *c) {
     if (maxlen) {
         o = createObject(OBJ_STRING,res);
         setKey(c, c->db, targetkey, o, 0);
-        zfree(o);
+        decrRefCount(o);
         notifyKeyspaceEvent(NOTIFY_STRING,"set",targetkey,c->db->id);
         server.dirty++;
     } else if (dbDelete(c->db,targetkey)) {

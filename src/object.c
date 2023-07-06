@@ -402,7 +402,7 @@ static void freeReferencedObject(robj *o) {
 void decrRefCount(robj *o) {
     if (o->refcount == 1) {
         serverAssert(!(o->state & OBJ_STATE_PROTECTED));
-        if (!(o->state & OBJ_STATE_MOVED)) freeReferencedObject(o);
+        if (!(o->state & OBJ_STATE_REFERENCE)) freeReferencedObject(o);
         zfree(o);
     } else {
         if (o->refcount <= 0) serverPanic("decrRefCount against refcount <= 0");

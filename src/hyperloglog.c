@@ -1200,7 +1200,7 @@ void pfaddCommand(client *c) {
          * is guaranteed to return bytes initialized to zero. */
         o = createHLLObject();
         dictEntry *de = dbAdd(c->db, c->argv[1], o);
-        zfree(o);
+        decrRefCount(o);
         o = dictGetVal(de);
         updated++;
     } else {
@@ -1364,7 +1364,7 @@ void pfmergeCommand(client *c) {
          * is guaranteed to return bytes initialized to zero. */
         o = createHLLObject();
         dictEntry *de = dbAdd(c->db, c->argv[1], o);
-        zfree(o);
+        decrRefCount(o);
         o = dictGetVal(de);
     } else {
         /* If key exists we are sure it's of the right type/size

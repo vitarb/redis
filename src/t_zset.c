@@ -1757,7 +1757,7 @@ void zaddGenericCommand(client *c, int flags) {
             zobj = createZsetListpackObject();
         }
         dictEntry *de = dbAdd(c->db, key, zobj);
-        zfree(zobj);
+        decrRefCount(zobj);
         zobj = dictGetVal(de);
     }
 
@@ -2776,7 +2776,7 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
         if (dstzset->zsl->length) {
             zsetConvertToListpackIfNeeded(dstobj, maxelelen, totelelen);
             dictEntry *de = setKey(c, c->db, dstkey, dstobj, 0);
-            zfree(dstobj);
+            decrRefCount(dstobj);
             dstobj = dictGetVal(de);
             addReplyLongLong(c, zsetLength(dstobj));
             notifyKeyspaceEvent(NOTIFY_ZSET,
@@ -2990,7 +2990,7 @@ static void zrangeResultFinalizeStore(zrange_result_handler *handler, size_t res
 {
     if (result_count) {
         dictEntry *de = setKey(handler->client, handler->client->db, handler->dstkey, handler->dstobj, 0);
-        zfree(handler->dstobj);
+        decrRefCount(handler->dstobj);
         handler->dstobj = dictGetVal(de);
         addReplyLongLong(handler->client, result_count);
         notifyKeyspaceEvent(NOTIFY_ZSET, "zrangestore", handler->dstkey, handler->client->db->id);

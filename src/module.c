@@ -705,7 +705,7 @@ int moduleCreateEmptyKey(RedisModuleKey *key, int type) {
     default: return REDISMODULE_ERR;
     }
     dictEntry *de = dbAdd(key->db, key->key, obj);
-    zfree(obj);
+    decrRefCount(obj);
     key->value = dictGetVal(de);
     moduleInitKeyTypeSpecific(key);
     return REDISMODULE_OK;
@@ -4238,7 +4238,7 @@ int RM_StringSet(RedisModuleKey *key, RedisModuleString *str) {
     if (!(key->mode & REDISMODULE_WRITE) || key->iter) return REDISMODULE_ERR;
     RM_DeleteKey(key);
     dictEntry *de = setKey(key->ctx->client, key->db, key->key, str, SETKEY_NO_SIGNAL);
-    zfree(str);
+    decrRefCount(str);
     str = dictGetVal(de);
     key->value = str;
     return REDISMODULE_OK;
@@ -6899,7 +6899,7 @@ int RM_ModuleTypeSetValue(RedisModuleKey *key, moduleType *mt, void *value) {
     RM_DeleteKey(key);
     robj *o = createModuleObject(mt,value);
     dictEntry *de = setKey(key->ctx->client, key->db, key->key, o, SETKEY_NO_SIGNAL);
-    zfree(o);
+    decrRefCount(o);
     o = dictGetVal(de);
     key->value = o;
     return REDISMODULE_OK;

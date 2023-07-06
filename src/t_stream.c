@@ -1861,7 +1861,7 @@ robj *streamTypeLookupWriteOrCreate(client *c, robj *key, int no_create) {
         }
         o = createStreamObject();
         dictEntry *de = dbAdd(c->db, key, o);
-        zfree(o);
+        decrRefCount(o);
         o = dictGetVal(de);
     }
     return o;
@@ -2675,7 +2675,7 @@ NULL
             serverAssert(mkstream);
             o = createStreamObject();
             dictEntry *de = dbAdd(c->db, c->argv[2], o);
-            zfree(o);
+            decrRefCount(o);
             o = dictGetVal(de);
             s = o->ptr;
             signalModifiedKey(c,c->db,c->argv[2]);

@@ -109,7 +109,6 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
     setkey_flags |= ((flags & OBJ_KEEPTTL) || expire) ? SETKEY_KEEPTTL : 0;
     setkey_flags |= found ? SETKEY_ALREADY_EXIST : SETKEY_DOESNT_EXIST;
     setKey(c,c->db,key,val,setkey_flags);
-    val->state |= OBJ_STATE_MOVED;
     server.dirty++;
     notifyKeyspaceEvent(NOTIFY_STRING,"set",key,c->db->id);
 
@@ -431,7 +430,6 @@ void getsetCommand(client *c) {
     if (getGenericCommand(c) == C_ERR) return;
     c->argv[2] = tryObjectEncoding(c->argv[2]);
     setKey(c, c->db, c->argv[1], c->argv[2], 0);
-    c->argv[2]->state |= OBJ_STATE_MOVED;
     notifyKeyspaceEvent(NOTIFY_STRING,"set",c->argv[1],c->db->id);
     server.dirty++;
 
@@ -466,7 +464,7 @@ void setrangeCommand(client *c) {
 
         o = createObject(OBJ_STRING,sdsnewlen(NULL, offset+sdslen(value)));
         dictEntry *de = dbAdd(c->db, c->argv[1], o);
-        zfree(o);
+        decrRefCount(o);
         o = dictGetVal(de);
     } else {
         size_t olen;
@@ -582,7 +580,6 @@ void msetGenericCommand(client *c, int nx) {
     for (j = 1; j < c->argc; j += 2) {
         c->argv[j+1] = tryObjectEncoding(c->argv[j+1]);
         setKey(c, c->db, c->argv[j], c->argv[j+1], 0);
-        c->argv[j+1]->state |= OBJ_STATE_MOVED;
         notifyKeyspaceEvent(NOTIFY_STRING,"set",c->argv[j],c->db->id);
     }
     server.dirty += (c->argc-1)/2;
@@ -626,7 +623,7 @@ void incrDecrCommand(client *c, long long incr) {
         } else {
             dbAdd(c->db,c->argv[1],new);
         }
-        if (new->refcount != OBJ_SHARED_REFCOUNT) zfree(new);
+        decrRefCount(new);
     }
     signalModifiedKey(c,c->db,c->argv[1]);
     notifyKeyspaceEvent(NOTIFY_STRING,"incrby",c->argv[1],c->db->id);
@@ -682,7 +679,7 @@ void incrbyfloatCommand(client *c) {
         de = dbReplaceValue(c->db, c->argv[1], new);
     else
         de = dbAdd(c->db,c->argv[1],new);
-    zfree(new); 
+    decrRefCount(new);
     new = dictGetVal(de);
     signalModifiedKey(c,c->db,c->argv[1]);
     notifyKeyspaceEvent(NOTIFY_STRING,"incrbyfloat",c->argv[1],c->db->id);
@@ -706,7 +703,6 @@ void appendCommand(client *c) {
         /* Create the key */
         c->argv[2] = tryObjectEncoding(c->argv[2]);
         dbAdd(c->db,c->argv[1],c->argv[2]);
-        c->argv[2]->state |= OBJ_STATE_MOVED;
         totlen = stringObjectLen(c->argv[2]);
     } else {
         /* Key exists, check type */
