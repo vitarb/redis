@@ -367,6 +367,7 @@ dictEntry* setKey(client *c, redisDb *db, robj *key, robj **val, int flags) {
     } else {
         de = dbSetValue(db,key,*val,1);
     }
+    decrRefCount(*val);
     *val = dictGetVal(de);
     incrRefCount(*val);
     if (!(flags & SETKEY_KEEPTTL)) removeExpire(db,key);
