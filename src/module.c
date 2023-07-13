@@ -4237,9 +4237,7 @@ int RM_GetToDbIdFromOptCtx(RedisModuleKeyOptCtx *ctx) {
 int RM_StringSet(RedisModuleKey *key, RedisModuleString *str) {
     if (!(key->mode & REDISMODULE_WRITE) || key->iter) return REDISMODULE_ERR;
     RM_DeleteKey(key);
-    dictEntry *de = setKey(key->ctx->client, key->db, key->key, str, SETKEY_NO_SIGNAL);
-    decrRefCount(str);
-    str = dictGetVal(de);
+    setKey(key->ctx->client, key->db, key->key, &str, SETKEY_NO_SIGNAL);
     key->value = str;
     return REDISMODULE_OK;
 }
@@ -4319,9 +4317,7 @@ int RM_StringTruncate(RedisModuleKey *key, size_t newlen) {
     if (key->value == NULL) {
         /* Empty key: create it with the new size. */
         robj *o = createObject(OBJ_STRING,sdsnewlen(NULL, newlen));
-        dictEntry *de = setKey(key->ctx->client, key->db, key->key, o, SETKEY_NO_SIGNAL);
-        zfree(o);
-        o = dictGetVal(de);
+        setKey(key->ctx->client, key->db, key->key, &o, SETKEY_NO_SIGNAL);
         key->value = o;
     } else {
         /* Unshare and resize. */
@@ -6898,9 +6894,7 @@ int RM_ModuleTypeSetValue(RedisModuleKey *key, moduleType *mt, void *value) {
     if (!(key->mode & REDISMODULE_WRITE) || key->iter) return REDISMODULE_ERR;
     RM_DeleteKey(key);
     robj *o = createModuleObject(mt,value);
-    dictEntry *de = setKey(key->ctx->client, key->db, key->key, o, SETKEY_NO_SIGNAL);
-    decrRefCount(o);
-    o = dictGetVal(de);
+    setKey(key->ctx->client, key->db, key->key, &o, SETKEY_NO_SIGNAL);
     key->value = o;
     return REDISMODULE_OK;
 }
