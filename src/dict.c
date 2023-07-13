@@ -805,7 +805,7 @@ void dictSetKey(dict *d, dictEntry* de, void *key) {
         de->key = key;
 }
 
-void dictSetVal(dict *d, dictEntry **de, void *val) {
+int dictSetVal(dict *d, dictEntry **de, void *val) {
     assert(entryHasValue(*de));
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
     if (entryIsEmbedded(*de)) {
@@ -814,10 +814,12 @@ void dictSetVal(dict *d, dictEntry **de, void *val) {
             dictEntry *unlinked = dictUnlink(d, key);
             *de = dictAddWithValue(d, key, val);
             dictFreeUnlinkedEntry(d, unlinked);
+            return 1;
         }
     } else {
         (*de)->v.val = v;
     }
+    return 0;
 }
 
 void dictSetSignedIntegerVal(dictEntry *de, int64_t val) {

@@ -317,18 +317,19 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
         /* Because of RM_StringDMA, old may be changed, so we need get old again */
         old = dictGetVal(de);
     }
+    robj *valobj = createObject(old->type, old->ptr);
+    valobj->encoding = old->encoding;
     if (expire != -1) removeExpire(db, &keyobj);
-    // TODO change return type to int, returning non zero values if dictEntry has been moved. Avoid updating expiry if it hasn't moved.
-    dictSetVal(d, &de, val);
+    int updated = dictSetVal(d, &de, val);
     if (expire != -1) {
         initStaticStringObject(keyobj, dictGetKey(de));
         setExpire(NULL, db, &keyobj, expire);
     }
-    robj *valobj = createObject(old->type, old->ptr);
-    valobj->encoding = old->encoding;
-    /* old embedded entry is already cleaned up */
-    if (server.lazyfree_lazy_server_del) {
+
+    if (updated && server.lazyfree_lazy_server_del) {
         freeObjAsync(key, valobj, db->id);
+    } else {
+        zfree(valobj);
     }
     return de;
 }
