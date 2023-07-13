@@ -268,14 +268,14 @@ int getKeySlot(sds key) {
  * The function returns 1 if the key was added to the database, taking
  * ownership of the SDS string, otherwise 0 is returned, and is up to the
  * caller to free the SDS string. */
-int dbAddRDBLoad(redisDb *db, sds key, robj *val) {
+dictEntry *dbAddRDBLoad(redisDb *db, sds key, robj *val) {
     int slot = getKeySlot(key);
     dict *d = db->dict[slot];
     dictEntry *de = dictAddWithValue(d, key, val);
     serverAssert(de != NULL);
     db->key_count++;
     cumulativeKeyCountAdd(db, slot, 1);
-    return 1;
+    return de;
 }
 
 /* Overwrite an existing key with a new value. Incrementing the reference
