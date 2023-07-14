@@ -1399,6 +1399,7 @@ void sinterGenericCommand(client *c, robj **setkeys,
                 dstset->ptr = lpShrinkToFit(dstset->ptr);
             }
             setKey(c, c->db, dstkey, &dstset, 0);
+            decrRefCount(dstset);
             addReplyLongLong(c,setTypeSize(dstset));
             notifyKeyspaceEvent(NOTIFY_SET,"sinterstore",
                 dstkey,c->db->id);
@@ -1611,6 +1612,7 @@ void sunionDiffGenericCommand(client *c, robj **setkeys, int setnum,
          * create this key with the result set inside */
         if (setTypeSize(dstset) > 0) {
             setKey(c, c->db, dstkey, &dstset, 0);
+            decrRefCount(dstset);
             addReplyLongLong(c,setTypeSize(dstset));
             notifyKeyspaceEvent(NOTIFY_SET,
                 op == SET_OP_UNION ? "sunionstore" : "sdiffstore",

@@ -783,6 +783,7 @@ void bitopCommand(client *c) {
     if (maxlen) {
         o = createObject(OBJ_STRING,res);
         setKey(c, c->db, targetkey, &o, 0);
+        decrRefCount(o);
         notifyKeyspaceEvent(NOTIFY_STRING,"set",targetkey,c->db->id);
         server.dirty++;
     } else if (dbDelete(c->db,targetkey)) {

@@ -2776,6 +2776,7 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
         if (dstzset->zsl->length) {
             zsetConvertToListpackIfNeeded(dstobj, maxelelen, totelelen);
             setKey(c, c->db, dstkey, &dstobj, 0);
+            decrRefCount(dstobj);
             addReplyLongLong(c, zsetLength(dstobj));
             notifyKeyspaceEvent(NOTIFY_ZSET,
                                 (op == SET_OP_UNION) ? "zunionstore" :
@@ -2988,6 +2989,7 @@ static void zrangeResultFinalizeStore(zrange_result_handler *handler, size_t res
 {
     if (result_count) {
         setKey(handler->client, handler->client->db, handler->dstkey, &handler->dstobj, 0);
+        decrRefCount(handler->dstobj);
         addReplyLongLong(handler->client, result_count);
         notifyKeyspaceEvent(NOTIFY_ZSET, "zrangestore", handler->dstkey, handler->client->db->id);
         server.dirty++;

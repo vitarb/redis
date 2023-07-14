@@ -4239,6 +4239,7 @@ int RM_StringSet(RedisModuleKey *key, RedisModuleString *str) {
     RM_DeleteKey(key);
     setKey(key->ctx->client, key->db, key->key, &str, SETKEY_NO_SIGNAL);
     key->value = str;
+    decrRefCount(str);
     return REDISMODULE_OK;
 }
 
@@ -4319,6 +4320,7 @@ int RM_StringTruncate(RedisModuleKey *key, size_t newlen) {
         robj *o = createObject(OBJ_STRING,sdsnewlen(NULL, newlen));
         setKey(key->ctx->client, key->db, key->key, &o, SETKEY_NO_SIGNAL);
         key->value = o;
+        decrRefCount(o);
     } else {
         /* Unshare and resize. */
         key->value = dbUnshareStringValue(key->db, key->key, key->value);
@@ -6896,6 +6898,7 @@ int RM_ModuleTypeSetValue(RedisModuleKey *key, moduleType *mt, void *value) {
     robj *o = createModuleObject(mt,value);
     setKey(key->ctx->client, key->db, key->key, &o, SETKEY_NO_SIGNAL);
     key->value = o;
+    decrRefCount(o);
     return REDISMODULE_OK;
 }
 
