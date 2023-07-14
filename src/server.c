@@ -309,16 +309,14 @@ void dictObjectValToBytes(void *de, const void *val, unsigned char *buf) {
     robj *new = (robj*)val;
     robj *copy = (robj*)de;
     memcpy(de, val, sizeof(robj));
+    copy->state = 0;
     // Update robj->ptr for the string to point into the buffer instead of the source.
     if (new->encoding == OBJ_ENCODING_EMBSTR) {
         sds valSds = (sds) copy->ptr;
         memcpy(buf, sdsAllocPtr(copy->ptr), sdsAllocSize(valSds));
         copy->ptr = buf + sdsHdrSize(valSds[-1]);
     }
-    if (new->encoding != OBJ_ENCODING_EMBSTR && new->encoding != OBJ_ENCODING_INT && new->refcount != OBJ_SHARED_REFCOUNT) {
-        new->state |= OBJ_STATE_REFERENCE; /* Ownership of the actual value behind ptr now belongs to the entry in the DB. */
-    }
-    serverAssert(!(copy->state & OBJ_STATE_REFERENCE));
+    new->state |= OBJ_STATE_REFERENCE; /* Ownership of the actual value behind ptr now belongs to the entry in the DB. */
     copy->refcount = 1;
     copy->state |= OBJ_STATE_PROTECTED;
 }
