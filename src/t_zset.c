@@ -2650,8 +2650,10 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
         qsort(src,setnum,sizeof(zsetopsrc),zuiCompareByCardinality);
     }
 
-    dstobj = createZsetObject();
-    dstzset = dstobj->ptr;
+    if (!cardinality_only) {
+        dstobj = createZsetObject();
+        dstzset = dstobj->ptr;
+    }
     memset(&zval, 0, sizeof(zval));
 
     if (op == SET_OP_INTER) {
@@ -2776,7 +2778,6 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
         if (dstzset->zsl->length) {
             zsetConvertToListpackIfNeeded(dstobj, maxelelen, totelelen);
             setKey(c, c->db, dstkey, &dstobj, 0);
-            decrRefCount(dstobj);
             addReplyLongLong(c, zsetLength(dstobj));
             notifyKeyspaceEvent(NOTIFY_ZSET,
                                 (op == SET_OP_UNION) ? "zunionstore" :
@@ -2791,6 +2792,7 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
                 server.dirty++;
             }
         }
+        decrRefCount(dstobj);
     } else if (cardinality_only) {
         addReplyLongLong(c, cardinality);
     } else {
@@ -2811,6 +2813,8 @@ void zunionInterDiffGenericCommand(client *c, robj *dstkey, int numkeysIndex, in
             if (withscores) addReplyDouble(c,zn->score);
             zn = zn->level[0].forward;
         }
+        server.lazyfree_lazy_server_del ? freeObjAsync(NULL, dstobj, -1) :
+                                          decrRefCount(dstobj);
     }
     zfree(src);
 }
@@ -2989,7 +2993,6 @@ static void zrangeResultFinalizeStore(zrange_result_handler *handler, size_t res
 {
     if (result_count) {
         setKey(handler->client, handler->client->db, handler->dstkey, &handler->dstobj, 0);
-        decrRefCount(handler->dstobj);
         addReplyLongLong(handler->client, result_count);
         notifyKeyspaceEvent(NOTIFY_ZSET, "zrangestore", handler->dstkey, handler->client->db->id);
         server.dirty++;
@@ -3001,6 +3004,7 @@ static void zrangeResultFinalizeStore(zrange_result_handler *handler, size_t res
             server.dirty++;
         }
     }
+    decrRefCount(handler->dstobj);
 }
 
 /* Initialize the consumer interface type with the requested type. */
