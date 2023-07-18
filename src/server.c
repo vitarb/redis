@@ -341,7 +341,7 @@ void dictEmbeddedValueDestructor(dict *d, void *val)
 {
     UNUSED(d);
     robj *obj = ((robj*)val);
-    if (val == NULL || server.lazyfree_lazy_server_del || obj->ptr == NULL) return; /* Lazy freeing will set value to NULL. */
+    if (val == NULL || server.lazyfree_lazy_server_del) return; /* Lazy freeing will set value to NULL. */
     serverAssert(obj->state & OBJ_STATE_PROTECTED);
     obj->state &= ~(OBJ_STATE_PROTECTED); /* unlinked from dict. */
     decrRefCount(obj);

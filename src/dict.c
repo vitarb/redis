@@ -810,12 +810,10 @@ int dictSetVal(dict *d, dictEntry **de, void *val) {
     void *v = d->type->valDup ? d->type->valDup(d, val) : val;
     if (entryIsEmbedded(*de)) {
         void *key = dictGetKey(*de);
-        // if (!d->type->trySetVal(decodeEmbeddedEntry(*de), val)) { /* If size of the value didn't change then we can simply reassign pointers, otherwise new entry must be created. */
-            dictEntry *unlinked = dictUnlink(d, key);
-            *de = dictAddWithValue(d, key, val);
-            dictFreeUnlinkedEntry(d, unlinked);
-            return 1;
-        // }
+        dictEntry *unlinked = dictUnlink(d, key);
+        *de = dictAddWithValue(d, key, val);
+        dictFreeUnlinkedEntry(d, unlinked);
+        return 1;
     } else {
         (*de)->v.val = v;
     }

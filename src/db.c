@@ -329,6 +329,7 @@ static dictEntry* dbSetValue(redisDb *db, robj *key, robj *val, int overwrite) {
     if (updated && server.lazyfree_lazy_server_del) {
         freeObjAsync(key, valobj, db->id);
     } else {
+        /* old obj/ptr might still be available (as part of client argv). */
         zfree(valobj);
     }
     return de;
@@ -505,7 +506,7 @@ int dbGenericDelete(redisDb *db, robj *key, int async, int flags) {
             valobj->encoding = val->encoding;
             /* Because of dbUnshareStringValue, the val in de may change. */
             freeObjAsync(key, valobj, db->id);
-            val->ptr = NULL;
+            val->state |= OBJ_STATE_REFERENCE;
         }
         /* Deleting an entry from the expires dict will not free the sds of
         * the key, because it is shared with the main dictionary. */
@@ -1363,11 +1364,9 @@ void renameGenericCommand(client *c, int nx) {
         return;
     }
 
-    incrRefCount(o);
     expire = getExpire(c->db,c->argv[1]);
     if (lookupKeyWrite(c->db,c->argv[2]) != NULL) {
         if (nx) {
-            decrRefCount(o);
             addReply(c,shared.czero);
             return;
         }
