@@ -610,13 +610,20 @@ void incrDecrCommand(client *c, long long incr) {
     }
     value += incr;
 
-    if (o) {
+    if (o && o->refcount == 1 && o->encoding == OBJ_ENCODING_INT &&
+        (value < 0 || value >= OBJ_SHARED_INTEGERS) &&
+        value >= LONG_MIN && value <= LONG_MAX)
+    {
         new = o;
         o->ptr = (void*)((long)value);
     } else {
         new = createStringObjectFromLongLongForValue(value);
-        dbAdd(c->db,c->argv[1],new);
-        decrRefCount(new);
+        if (o) {
+            dbReplaceValue(c->db,c->argv[1],new);
+        } else {
+            dbAdd(c->db,c->argv[1],new);
+            decrRefCount(new);
+        }
     }
     signalModifiedKey(c,c->db,c->argv[1]);
     notifyKeyspaceEvent(NOTIFY_STRING,"incrby",c->argv[1],c->db->id);

@@ -1597,9 +1597,6 @@ NULL
 
             addReplyBulkCString(c,"overhead.hashtable.expires");
             addReplyLongLong(c,mh->db[j].overhead_ht_expires);
-
-            addReplyBulkCString(c,"overhead.hashtable.slot-to-keys");
-            addReplyLongLong(c,mh->db[j].overhead_ht_slot_to_keys);
         }
 
 

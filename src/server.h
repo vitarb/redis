@@ -1427,7 +1427,6 @@ struct redisMemOverhead {
         size_t dbid;
         size_t overhead_ht_main;
         size_t overhead_ht_expires;
-        size_t overhead_ht_slot_to_keys;
     } *db;
 };
 
