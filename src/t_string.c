@@ -622,8 +622,8 @@ void incrDecrCommand(client *c, long long incr) {
             dbReplaceValue(c->db,c->argv[1],new);
         } else {
             dbAdd(c->db,c->argv[1],new);
-            decrRefCount(new);
         }
+        decrRefCount(new);
     }
     signalModifiedKey(c,c->db,c->argv[1]);
     notifyKeyspaceEvent(NOTIFY_STRING,"incrby",c->argv[1],c->db->id);
