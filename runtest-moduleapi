@@ -13,7 +13,6 @@ then
     exit 1
 fi
 
-# value-embedding - enable hooks test
 $MAKE -C tests/modules && \
 $TCLSH tests/test_helper.tcl \
 --single unit/moduleapi/commandfilter \
@@ -24,6 +23,7 @@ $TCLSH tests/test_helper.tcl \
 --single unit/moduleapi/moduleconfigs \
 --single unit/moduleapi/infra \
 --single unit/moduleapi/propagate \
+--single unit/moduleapi/hooks \
 --single unit/moduleapi/misc \
 --single unit/moduleapi/blockonkeys \
 --single unit/moduleapi/blockonbackground \
