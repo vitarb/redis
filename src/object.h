@@ -1,4 +1,6 @@
-
+/*
+ * Redis Object struct definition and macros
+ */
 
 #define LRU_BITS 24
 #define STATE_BITS 4
