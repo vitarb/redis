@@ -499,8 +499,17 @@ int dbGenericDelete(redisDb *db, robj *key, int async, int flags) {
         /* We want to try to unblock any module clients or clients using a blocking XREADGROUP */
         signalDeletedKeyAsReady(db,key,val->type);
         /* We should call decr before freeObjAsync. If not, the refcount may be
-         * greater than 1, so freeObjAsync doesn't work */
-        decrRefCount(val);
+         * greater than 1, so freeObjAsync doesn't work .
+         *
+         * With value-embedding, if the val undergoes dbUnshareStringValue operation, the provided object
+         * would replaced from the dictionary and a new entry would be created. Hence, the refcount might
+         * have been reduced already as well as the OBJ_STATE_PROTECTED would have been removed. Hence,
+         * we make the val object refcount/state ideal for dictTwoPhaseUnlinkFree to clean the val */
+        if (val->refcount > 1) {
+            decrRefCount(val);
+        } else {
+            val->state |= OBJ_STATE_PROTECTED;
+        }
         if (async) {
             robj *valobj = createObject(val->type, val->ptr);
             valobj->encoding = val->encoding;
