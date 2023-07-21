@@ -46,6 +46,7 @@
 #include "zmalloc.h"
 #include "redisassert.h"
 #include "monotonic.h"
+#include "object.h"
 
 /* Using dictEnableResize() / dictDisableResize() we make possible to disable
  * resizing and rehashing of the hash table as needed. This is very important
@@ -70,25 +71,11 @@ struct dictEntry {
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
 };
 
-/* TODO (value embedding) share object state between object.c and dict.c to avoid copy pasting. */
-#define LRU_BITS 24
-#define STATE_BITS 4
-/* Object flags */
-#define OBJ_STATE_NONE          0
-#define OBJ_STATE_REFERENCE     (1<<0)     /* Reference objects don't own the value behind the pointer and are not responsible for its cleanup. */
-#define OBJ_STATE_PROTECTED (1<<1)         /* Protected objects can't be freed until protected flag is removed. */
-
-
 /* Embedded entry contains redis object's fields in the same order and can be cast directly to robj.
  * Sds key is embedded into data array, as well as values that use embedded string encoding.
  * Using this structure saves 2 pointers (16 bytes) comparing to the normal dictEntry. */
 typedef struct {
-    unsigned type:4;
-    unsigned encoding:4;
-    unsigned lru:LRU_BITS;
-    unsigned int refcount:(32-STATE_BITS);
-    unsigned int state:STATE_BITS;
-    void *ptr;
+    struct redisObject robj;
     struct dictEntry *next;     /* Next entry in the same hash bucket. */
     unsigned char data[];
 } embeddedDictEntry;
