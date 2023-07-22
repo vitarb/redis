@@ -1194,11 +1194,21 @@ static void dictDefragBucket(dictEntry **bucketref, dictDefragFunctions *defragf
             if (newkey) entry->key = newkey;
         } else if (entryIsEmbedded(de)) {
             embeddedDictEntry *entry = decodeEmbeddedEntry(de), *newentry;
+
+            /* The sds is embedded in the object allocation, calculate the
+             * offset and update the pointer in the new allocation. */
+            long ofs = -1;
+            if (entry->robj.encoding==OBJ_ENCODING_EMBSTR) {
+                ofs = (intptr_t)entry->robj.ptr - (intptr_t)entry;
+            }
+
             if ((newentry = defragalloc(entry))) {
                 newde = encodeMaskedPtr(newentry, ENTRY_PTR_EMBEDDED);
+                if (ofs > 0) {
+                    newentry->robj.ptr = (void*)((intptr_t)newde + ofs);
+                }
                 entry = newentry;
             }
-            // if (newval) entry->v.val = newval;
         } else {
             assert(entryIsNormal(de));
             newde = defragalloc(de);
